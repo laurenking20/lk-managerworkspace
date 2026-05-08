@@ -1,0 +1,2696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FOCUS — Manager Workspace</title>
+<script src="https://unpkg.com/@azure/msal-browser@3.24.0/lib/msal-browser.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--radius:8px;--radius-sm:6px;--radius-lg:12px}
+[data-theme="dark"]{--bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#2d333b;--border:#30363d;--border2:#444c56;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--accent:#58a6ff;--accent2:#1f6feb;--accent-bg:rgba(88,166,255,0.1);--green:#3fb950;--green-bg:rgba(63,185,80,0.1);--green-mid:rgba(63,185,80,0.2);--red:#f85149;--red-bg:rgba(248,81,73,0.1);--amber:#d29922;--amber-bg:rgba(210,153,34,0.1);--shadow:0 1px 3px rgba(0,0,0,0.3)}
+[data-theme="light"]{--bg:#ffffff;--bg2:#f6f8fa;--bg3:#eaeef2;--bg4:#d0d7de;--border:#d0d7de;--border2:#aab4be;--text:#1f2328;--text2:#57606a;--text3:#8c959f;--accent:#0969da;--accent2:#0550ae;--accent-bg:rgba(9,105,218,0.08);--green:#1a7f37;--green-bg:rgba(26,127,55,0.08);--green-mid:rgba(26,127,55,0.15);--red:#cf222e;--red-bg:rgba(207,34,46,0.08);--amber:#9a6700;--amber-bg:rgba(154,103,0,0.08);--shadow:0 1px 3px rgba(0,0,0,0.08)}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+
+/* Header */
+.header{background:var(--bg2);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;padding:0 16px;gap:12px;position:fixed;top:0;left:0;right:0;z-index:200}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-mark{width:30px;height:30px;background:#1a3a5c;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-text{font-size:13px;font-weight:700;color:var(--text);letter-spacing:0.3px}
+.logo-sub{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.header-badge{background:#9333ea;color:white;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.3px}
+.user-badge{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text2)}
+.user-avatar{width:20px;height:20px;border-radius:50%;background:#9333ea;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff}
+.theme-btn{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;cursor:pointer;color:var(--text2);font-size:12px;font-family:var(--font)}
+.sign-out{background:none;border:none;cursor:pointer;font-size:12px;color:var(--text3);font-family:var(--font)}
+.sign-out:hover{color:var(--text)}
+
+/* Layout */
+.app{display:flex;height:100vh;padding-top:56px}
+
+/* Rail */
+.rail{width:52px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0;position:fixed;top:56px;bottom:0;left:0;z-index:100;overflow-y:auto}
+.rail-btn{width:38px;height:38px;border-radius:var(--radius-sm);border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text3);transition:all .15s;position:relative}
+.rail-btn:hover{background:var(--bg3);color:var(--text2)}
+.rail-btn.active{background:var(--accent-bg);color:var(--accent)}
+.rail-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}
+.rail-sep{width:24px;height:1px;background:var(--border);margin:4px 0;flex-shrink:0}
+.rail-tooltip{position:absolute;left:48px;background:var(--bg4);color:var(--text);font-size:11px;padding:4px 8px;border-radius:4px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300;border:1px solid var(--border)}
+.rail-btn:hover .rail-tooltip{opacity:1}
+
+/* Main content */
+.main{margin-left:52px;flex:1;display:flex;flex-direction:column;overflow:hidden}
+.content-area{flex:1;overflow-y:auto;padding:24px;background:var(--bg3)}
+
+/* Section panels */
+.section-panel{display:none}
+.section-panel.active{display:block}
+
+/* Cards */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
+.card-sm{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.stat-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px}
+.stat-value{font-size:26px;font-weight:600;color:var(--text);line-height:1}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* Section label */
+.section-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;font-family:var(--font);transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{opacity:.9}
+.btn-secondary{background:var(--bg3);color:var(--text);border-color:var(--border)}
+.btn-secondary:hover{background:var(--bg4)}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:rgba(207,34,46,.2)}
+.btn-success{background:var(--green-bg);color:var(--green);border-color:var(--green-mid)}
+.btn-purple{background:#9333ea;color:white;border-color:#7e22ce}
+.btn-purple:hover{opacity:.9}
+.btn-sm{padding:4px 10px;font-size:11px}
+
+/* Form */
+.form-group{margin-bottom:12px}
+.form-label{display:block;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.form-input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text);font-size:12px;font-family:var(--font)}
+.form-input:focus{outline:none;border-color:var(--accent)}
+select.form-input{cursor:pointer}
+
+/* Table */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{text-align:left;padding:8px 12px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.data-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+.data-table tr:hover td{background:var(--bg3)}
+.data-table tr:last-child td{border-bottom:none}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-mid)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-amber{background:var(--amber-bg);color:var(--amber)}
+.badge-blue{background:var(--accent-bg);color:var(--accent)}
+.badge-gray{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+.badge-purple{background:rgba(147,51,234,0.1);color:#9333ea;border:1px solid rgba(147,51,234,0.2)}
+
+/* Agent card */
+.agent-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .15s}
+.agent-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+.agent-avatar{width:36px;height:36px;border-radius:50%;background:#9333ea;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* Scorecard */
+.scorecard-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden}
+.scorecard-section-hdr{padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text);display:flex;justify-content:space-between;align-items:center}
+.scorecard-row{display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);gap:10px}
+.scorecard-row:last-child{border-bottom:none}
+.scorecard-q{flex:1;font-size:12px;color:var(--text)}
+.scorecard-btns{display:flex;gap:4px;flex-shrink:0}
+.score-btn{width:32px;height:28px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;font-size:11px;font-weight:600;color:var(--text3);transition:all .15s}
+.score-btn:hover{border-color:var(--border2)}
+.score-btn.pass{background:var(--green-bg);color:var(--green);border-color:var(--green-mid)}
+.score-btn.fail{background:var(--red-bg);color:var(--red);border-color:rgba(207,34,46,.2)}
+.score-btn.na{background:var(--amber-bg);color:var(--amber);border-color:rgba(154,103,0,.2)}
+
+/* Empty state */
+.empty-state{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+
+/* Login screen */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px;width:400px;box-shadow:0 8px 40px rgba(0,0,0,0.15)}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:8000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg);border-radius:var(--radius-lg);box-shadow:0 8px 40px rgba(0,0,0,0.3);display:flex;flex-direction:column;max-height:90vh}
+.modal-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-body{overflow-y:auto;padding:20px;flex:1}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0}
+
+/* Page header */
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.page-title{font-size:16px;font-weight:600;color:var(--text)}
+.page-sub{font-size:12px;color:var(--text3);margin-top:2px}
+
+/* Score ring */
+.score-ring{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;border:3px solid;font-size:14px;font-weight:700;flex-shrink:0}
+</style>
+</head>
+<body data-theme="light">
+
+<!-- Auth loading screen -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="width:48px;height:48px;background:#1a3a5c;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+        <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">FOCUS Manager</div>
+      <div style="font-size:12px;color:var(--text3)">Team leader and QA workspace</div>
+      <div style="margin-top:8px"><span class="badge badge-purple">Zinc Group — restricted access</span></div>
+    </div>
+    <div id="auth-loading-msg" style="font-size:13px;color:var(--text3);text-align:center;margin-bottom:16px">Connecting to Microsoft login...</div>
+    <button class="btn btn-purple" id="signin-btn" style="width:100%;justify-content:center;padding:10px;display:none" onclick="msalSignIn()">Sign in with Microsoft</button>
+    <div id="login-err" style="color:var(--red);font-size:12px;margin-top:10px;display:none;text-align:center">Access denied — a Zinc Group Microsoft account is required</div>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-mark">
+      <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">FOCUS</div>
+      <div class="logo-sub">Debt management platform</div>
+    </div>
+  </div>
+  <span class="badge badge-purple" style="font-size:11px">Manager workspace</span>
+  <div style="flex:1"></div>
+  <button class="theme-btn" onclick="toggleTheme()">Dark mode</button>
+  <div class="user-badge">
+    <div class="user-avatar" id="hdr-initials">RF</div>
+    <span id="hdr-name">Richard Fenton</span>
+    <span class="badge badge-purple" style="font-size:9px;margin-left:2px" id="hdr-role">Team Leader</span>
+  </div>
+  <button class="sign-out" onclick="signOut()">Sign out</button>
+</div>
+
+<!-- App -->
+<div class="app" id="app" style="display:none">
+
+  <!-- Rail -->
+  <div class="rail">
+    <button class="rail-btn active" id="rb-dashboard" onclick="setSection('dashboard')" title="">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="rail-tooltip">Dashboard</span>
+    </button>
+    <button class="rail-btn" id="rb-accounts" onclick="setSection('accounts')" title="">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="rail-tooltip">Account search</span>
+    </button>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" id="rb-agents" onclick="setSection('agents')" title="">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="rail-tooltip">Agents</span>
+    </button>
+    <button class="rail-btn" id="rb-qa-audit" onclick="setSection('qa-audit')" title="">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span class="rail-tooltip">QA Audit</span>
+    </button>
+    <button class="rail-btn" id="rb-qa-results" onclick="setSection('qa-results')" title="">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="rail-tooltip">QA Results</span>
+    </button>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" id="rb-policies" onclick="setSection('policies')" title="">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+      <span class="rail-tooltip">Policy compliance</span>
+    </button>
+    <button class="rail-btn" id="rb-training" onclick="setSection('training')" title="">
+      <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      <span class="rail-tooltip">Training</span>
+    </button>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" id="rb-clients" onclick="setSection('clients')" title="">
+      <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      <span class="rail-tooltip">Clients</span>
+    </button>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" id="rb-team" onclick="setSection('team')" title="">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="21" x2="23" y2="19"/><line x1="19" y1="21" x2="19" y2="19"/><path d="M23 13a4 4 0 0 0-4-4"/></svg>
+      <span class="rail-tooltip">My team</span>
+    </button>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="content-area">
+
+      <!-- DASHBOARD -->
+      <div class="section-panel active" id="section-dashboard">
+        <div class="page-hdr">
+          <div>
+            <div class="page-title" id="dash-greeting">Good morning</div>
+            <div class="page-sub" id="dash-date"></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <select class="form-input" id="dash-team-filter" style="width:160px" onchange="loadDashboard()">
+              <option value="all">All agents</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total agents</div>
+            <div class="stat-value" id="stat-total-agents">—</div>
+            <div class="stat-sub">active this month</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Avg QA score</div>
+            <div class="stat-value" id="stat-avg-qa" style="color:var(--green)">—</div>
+            <div class="stat-sub">last 30 days</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Policy compliance</div>
+            <div class="stat-value" id="stat-policy-comp">—</div>
+            <div class="stat-sub">agents fully compliant</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Training complete</div>
+            <div class="stat-value" id="stat-training-comp">—</div>
+            <div class="stat-sub">all courses passed</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">Find a customer</div>
+            <button class="btn btn-secondary btn-sm" onclick="setSection('accounts')">Advanced search</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Zinc reference</label><input class="form-input" id="dash-s-ref" placeholder="e.g. 10000001" onkeypress="if(event.key==='Enter')dashSearch()"/></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Last name</label><input class="form-input" id="dash-s-name" placeholder="e.g. Smith" onkeypress="if(event.key==='Enter')dashSearch()"/></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Mobile</label><input class="form-input" id="dash-s-mobile" placeholder="e.g. 07700100001" onkeypress="if(event.key==='Enter')dashSearch()"/></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="dashSearch()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:6px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Search customer
+          </button>
+          <div id="dash-search-err" style="margin-top:8px;font-size:12px;color:var(--red)"></div>
+          <div id="dash-search-results" style="display:none;margin-top:12px">
+            <div class="section-label" style="margin-bottom:8px">Results</div>
+            <div id="dash-search-results-list"></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div class="card">
+            <div class="section-label" style="margin-bottom:12px">Policy compliance — unread by agent</div>
+            <div id="dash-policy-list"><div class="empty-state" style="padding:20px">Loading...</div></div>
+          </div>
+          <div class="card">
+            <div class="section-label" style="margin-bottom:12px">Training completion</div>
+            <div id="dash-training-list"><div class="empty-state" style="padding:20px">Loading...</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-label" style="margin-bottom:12px">Remediation outstanding</div>
+          <div id="dash-remediation-list"><div class="empty-state" style="padding:20px">No outstanding remediation tasks</div></div>
+        </div>
+      </div>
+
+      <!-- ACCOUNT SEARCH -->
+      <div class="section-panel" id="section-accounts">
+        <div class="page-hdr">
+          <div><div class="page-title">Account search</div><div class="page-sub">Search, review, update status and diary dates</div></div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Zinc reference</label><input class="form-input" id="ms-ref" placeholder="e.g. 10000001" onkeypress="if(event.key==='Enter')managerSearch()"/></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Client account ref</label><input class="form-input" id="ms-car" placeholder="e.g. DB-RF-001" onkeypress="if(event.key==='Enter')managerSearch()"/></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Last name</label><input class="form-input" id="ms-name" placeholder="e.g. Smith" onkeypress="if(event.key==='Enter')managerSearch()"/></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Postcode</label><input class="form-input" id="ms-postcode" placeholder="e.g. LS12AB" onkeypress="if(event.key==='Enter')managerSearch()"/></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Email</label><input class="form-input" id="ms-email" placeholder="e.g. john@email.com" onkeypress="if(event.key==='Enter')managerSearch()"/></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Mobile</label><input class="form-input" id="ms-mobile" placeholder="e.g. 07700100001" onkeypress="if(event.key==='Enter')managerSearch()"/></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="managerSearch()">Search customer</button>
+          <div id="ms-err" style="margin-top:8px;font-size:12px;color:var(--red)"></div>
+        </div>
+        <div id="ms-results" style="display:none">
+          <div class="section-label">Results</div>
+          <div id="ms-results-list"></div>
+        </div>
+        <div id="ms-account-view" style="display:none"></div>
+      </div>
+
+      <!-- AGENTS -->
+      <div class="section-panel" id="section-agents">
+        <div class="page-hdr">
+          <div><div class="page-title">Agent overview</div><div class="page-sub">QA scores, policy and training compliance per agent</div></div>
+          <select class="form-input" style="width:160px" id="agent-filter" onchange="loadAgents()">
+            <option value="all">All agents</option>
+          </select>
+        </div>
+        <div id="agents-list"><div class="empty-state">Loading agents...</div></div>
+      </div>
+
+      <!-- QA AUDIT -->
+      <div class="section-panel" id="section-qa-audit">
+        <!-- Search state -->
+        <div id="qa-search-state">
+          <div class="page-hdr">
+            <div><div class="page-title">QA Audit</div><div class="page-sub">Search for the account to audit</div></div>
+          </div>
+          <div class="card" style="margin-bottom:16px" id="qa-search-card">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+              <div class="form-group" style="margin-bottom:0"><label class="form-label">Zinc reference</label><input class="form-input" id="qa-ref" placeholder="e.g. 10000001" onkeypress="if(event.key==='Enter')qaSearch()"/></div>
+              <div class="form-group" style="margin-bottom:0"><label class="form-label">Last name</label><input class="form-input" id="qa-name" placeholder="e.g. Smith" onkeypress="if(event.key==='Enter')qaSearch()"/></div>
+              <div class="form-group" style="margin-bottom:0"><label class="form-label">Client account ref</label><input class="form-input" id="qa-car" placeholder="e.g. DB-RF-001" onkeypress="if(event.key==='Enter')qaSearch()"/></div>
+            </div>
+            <button class="btn btn-primary" onclick="qaSearch()">Find account to audit</button>
+            <div id="qa-search-err" style="margin-top:8px;font-size:12px;color:var(--red)"></div>
+          </div>
+          <div id="qa-search-results" style="display:none;margin-bottom:16px"></div>
+        </div>
+
+        <!-- Split screen audit state -->
+        <div id="qa-audit-state" style="display:none;height:calc(100vh - 120px)">
+          <div style="display:flex;height:100%;gap:0">
+            <!-- Left: account panel -->
+            <div style="width:340px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:16px;background:var(--bg2)">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+                <button class="btn btn-secondary btn-sm" onclick="closeQAScorecard()">&larr; New search</button>
+                <div style="font-size:12px;font-weight:600;color:var(--text)" id="qa-panel-name"></div>
+              </div>
+              <div id="qa-account-panel"><div class="empty-state">Loading account...</div></div>
+            </div>
+            <!-- Right: scorecard -->
+            <div style="flex:1;overflow-y:auto;padding:16px" id="qa-scorecard-area"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QA RESULTS -->
+      <div class="section-panel" id="section-qa-results">
+        <div class="page-hdr">
+          <div><div class="page-title">QA Results</div><div class="page-sub">All submitted audits — filter by agent, date, client</div></div>
+          <button class="btn btn-purple" onclick="exportQAResults()">Export CSV</button>
+        </div>
+        <div class="card" style="margin-bottom:16px;padding:14px 16px">
+          <div style="display:flex;gap:10px;align-items:flex-end">
+            <div class="form-group" style="margin-bottom:0;flex:1"><label class="form-label">Agent</label><select class="form-input" id="qar-agent"><option value="">All agents</option></select></div>
+            <div class="form-group" style="margin-bottom:0;flex:1"><label class="form-label">Date from</label><input type="date" class="form-input" id="qar-from"/></div>
+            <div class="form-group" style="margin-bottom:0;flex:1"><label class="form-label">Date to</label><input type="date" class="form-input" id="qar-to"/></div>
+            <button class="btn btn-secondary" onclick="loadQAResults()">Filter</button>
+          </div>
+        </div>
+        <div id="qa-results-list"><div class="empty-state">Loading results...</div></div>
+      </div>
+
+      <!-- POLICIES -->
+      <div class="section-panel" id="section-policies">
+        <div class="page-hdr">
+          <div><div class="page-title">Policy compliance</div><div class="page-sub">Agent acknowledgement status across all active policies</div></div>
+        </div>
+        <div id="mgr-policies-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
+      <!-- TRAINING -->
+      <div class="section-panel" id="section-training">
+        <div class="page-hdr">
+          <div><div class="page-title">Training completion</div><div class="page-sub">Course completion and pass rates across all agents</div></div>
+        </div>
+        <div id="mgr-training-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
+      <!-- MY TEAM -->
+      <div class="section-panel" id="section-team">
+        <div class="page-hdr">
+          <div><div class="page-title">My team</div><div class="page-sub">Add and manage agents you are responsible for</div></div>
+          <button class="btn btn-purple" onclick="openAddTeamMemberModal()">+ Add team member</button>
+        </div>
+        <div id="team-list"><div class="empty-state">Loading your team...</div></div>
+      </div>
+
+      <!-- CLIENTS -->
+      <div class="section-panel" id="section-clients">
+        <div class="page-hdr">
+          <div><div class="page-title">Clients</div><div class="page-sub">Client and contract overview</div></div>
+        </div>
+        <div id="mgr-clients-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://zinc-portal-api-hvaveqgah3bnc5bw.uksouth-01.azurewebsites.net';
+var managerName = '', managerEmail = '', managerRole = 'Team Leader';
+
+// ===== QA SCORECARD CONSTANTS =====
+var QA_CALL_SECTIONS = [
+  { id:'data_intro', title:'Data & Introduction', items:[
+    {key:'idv',label:'ID & Verification',deductions:['Pass','Fail (100%)']},
+    {key:'info_sec',label:'Info Sec',deductions:['Pass','Fail (15%)']},
+    {key:'data_integrity',label:'Data Integrity',deductions:['Pass','Fail (3%)','Fail (15%)']},
+    {key:'call_intro',label:'Call Introduction',deductions:['Pass','Fail (3%)','Fail (15%)']},
+    {key:'status',label:'Status of Account',deductions:['Pass','Fail (3%)']},
+    {key:'calls_recorded',label:'Calls Recorded',deductions:['Pass','Fail (40%)']},
+  ]},
+  { id:'cust_understanding', title:'Customer Understanding', items:[
+    {key:'vulnerable',label:'Vulnerable / TEXAS',deductions:['Pass','Fail (3%)','Fail (40%)']},
+    {key:'no_pressure',label:'No Undue Pressure Applied',deductions:['Pass','Fail (40%)']},
+    {key:'signpost_fma',label:'Signpost FMA',deductions:['Pass','Fail (3%)','Fail (40%)']},
+    {key:'complaint',label:'Complaint Addressed',deductions:['Pass','Fail (40%)']},
+    {key:'eod',label:'EOD Addressed',deductions:['Pass','Fail (15%)']},
+  ]},
+  { id:'financial', title:'Financial Understanding', items:[
+    {key:'affordability',label:'Affordability / I&E',deductions:['Pass','Fail (3%)','Fail (40%)']},
+    {key:'no_advice',label:'No Advice Given',deductions:['Pass','Fail (40%)']},
+    {key:'priority_bills',label:'Priority Bills & Essential Living Expenses',deductions:['Pass','Fail (3%)','Fail (40%)']},
+    {key:'suitable_plan',label:'Suitable Plan (Method & Date)',deductions:['Pass','Fail (3%)','Fail (40%)']},
+    {key:'settlement',label:'Settlement (CRA Impact)',deductions:['Pass','Fail (40%)']},
+    {key:'cpa_dd',label:'CPA / DD Script',deductions:['Pass','Fail (40%)']},
+    {key:'pci_dss',label:'PCI DSS & Call Restarted',deductions:['Pass','Fail (15%)','Fail (40%)']},
+    {key:'consequences',label:'Consequences',deductions:['Pass','Fail (3%)','Fail (40%)']},
+    {key:'summary',label:'Summary / Hold Process',deductions:['Pass','Fail (3%)','Fail (10%)']},
+  ]},
+  { id:'call_end', title:'Call Structure & Soft Skills', items:[
+    {key:'call_structure',label:'Call Structure',deductions:['Pass','Fail (3%)']},
+    {key:'communication',label:'Effective Communication',deductions:['Pass','Fail (3%)','Fail (40%)']},
+    {key:'behaviours',label:'Behaviours',deductions:['Pass','Fail (3%)','Fail (40%)']},
+    {key:'questioning',label:'Questioning & Listening',deductions:['Pass','Fail (3%)','Fail (40%)']},
+    {key:'rapport',label:'Rapport',deductions:['Pass','Fail (3%)','Fail (10%)','Fail (15%)']},
+    {key:'tcf_call',label:'TCF / Customer Outcome (Call)',deductions:['Pass','Fail (100%)']},
+  ]},
+];
+
+var QA_ACCOUNT_ITEMS = [
+  {key:'idv',label:'ID&V Noted'},
+  {key:'reason',label:'Reason for Non-Payment Noted'},
+  {key:'arrangement',label:'Arrangement Noted (Amount & Date)'},
+  {key:'aml',label:'AML Checks Noted'},
+  {key:'summary',label:'Main Points of Call Summarised'},
+  {key:'sensitive',label:'Sensitive Info Updated Correctly'},
+  {key:'updates',label:'Account Updates Completed Correctly'},
+  {key:'diary',label:'Diary Date Set Correctly'},
+  {key:'ie',label:'I&E Completed / Affordability Recorded'},
+  {key:'status',label:'Relevant Status Changed on Account'},
+  {key:'gaps',label:'Avoidable Collection Activity Gaps'},
+  {key:'complaint',label:'Complaint / EOD Recorded Correctly'},
+  {key:'promises',label:'Promises Kept / Email or Letter Sent'},
+  {key:'tcf',label:'TCF / Customer Outcome (Account)'},
+];
+
+// ===== THEME =====
+function toggleTheme() {
+  var t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.body.setAttribute('data-theme', t);
+  document.querySelector('.theme-btn').textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+}
+
+// ===== AUTH =====
+// ===== AZURE AD AUTH =====
+var MSAL_CONFIG = {
+  auth: {
+    clientId: '6da0e941-9287-4de5-ae33-819d626b70f3',
+    authority: 'https://login.microsoftonline.com/61fee0e6-6eee-487b-be62-466a51513ab3',
+    redirectUri: window.location.origin
+  },
+  cache: { cacheLocation: 'sessionStorage' }
+};
+var msalInstance = null;
+
+async function initAuth() {
+  if (typeof msal === 'undefined') {
+    document.getElementById('auth-loading-msg').textContent = 'Authentication library failed to load. Please refresh.';
+    document.getElementById('signin-btn').style.display = 'block';
+    return;
+  }
+  msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+  await msalInstance.initialize();
+  try { await msalInstance.handleRedirectPromise(); } catch(e) {}
+  var accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    showManagerApp(accounts[0]);
+  } else {
+    document.getElementById('auth-loading-msg').textContent = 'Please sign in with your Zinc Group Microsoft account';
+    document.getElementById('signin-btn').style.display = 'block';
+  }
+}
+
+async function msalSignIn() {
+  try {
+    document.getElementById('auth-loading-msg').textContent = 'Opening Microsoft login...';
+    document.getElementById('signin-btn').style.display = 'none';
+    document.getElementById('login-err').style.display = 'none';
+    var result = await msalInstance.loginPopup({ scopes: ['User.Read'], prompt: 'select_account' });
+    showManagerApp(result.account);
+  } catch(e) {
+    document.getElementById('auth-loading-msg').textContent = 'Sign in cancelled. Please try again.';
+    document.getElementById('signin-btn').style.display = 'block';
+  }
+}
+
+function showManagerApp(account) {
+  var email = account.username || '';
+  var name = account.name || email;
+  // Require @thezincgroup.com
+  if (!email.toLowerCase().endsWith('@thezincgroup.com')) {
+    document.getElementById('auth-loading-msg').textContent = 'Access denied.';
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('signin-btn').style.display = 'block';
+    msalInstance.logoutPopup();
+    return;
+  }
+  managerEmail = email;
+  managerName = name;
+  // Assign role based on email — can be expanded later
+  managerRole = 'Team Leader';
+  if (email.toLowerCase().includes('rfenton') || email.toLowerCase().includes('director')) managerRole = 'Director';
+  if (email.toLowerCase().includes('qa')) managerRole = 'QA';
+  document.getElementById('hdr-name').textContent = name;
+  document.getElementById('hdr-initials').textContent = name.split(' ').map(function(n){ return n[0]; }).join('').substring(0,2).toUpperCase();
+  document.getElementById('hdr-role').textContent = managerRole;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  initDashboard();
+  loadDashboard();
+}
+
+function signOut() {
+  if (msalInstance) {
+    var account = msalInstance.getAllAccounts()[0];
+    if (account) { msalInstance.logoutPopup({ account }); }
+  }
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+// ===== NAVIGATION =====
+var sections = ['dashboard','accounts','agents','qa-audit','qa-results','policies','training','clients','team'];
+
+function setSection(name) {
+  sections.forEach(function(s) {
+    document.getElementById('section-'+s).classList.remove('active');
+    var rb = document.getElementById('rb-'+s);
+    if(rb) rb.classList.remove('active');
+  });
+  document.getElementById('section-'+name).classList.add('active');
+  var rb = document.getElementById('rb-'+name);
+  if(rb) rb.classList.add('active');
+  if(name==='agents') loadAgents();
+  if(name==='qa-results') loadQAResults();
+  if(name==='policies') loadMgrPolicies();
+  if(name==='training') loadMgrTraining();
+  if(name==='clients') loadMgrClients();
+  if(name==='team') loadMyTeam();
+}
+
+// ===== UTILS =====
+function fmtD(v) { return v ? new Date(v).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
+function fmtDT(v) { if(!v)return '—'; var d=new Date(v); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+function fmtCcy(v) { return v != null ? '£'+parseFloat(v).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'; }
+function notify(msg) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--text);z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 2500);
+}
+
+// ===== DASHBOARD =====
+function initDashboard() {
+  var h = new Date().getHours();
+  var gr = h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  document.getElementById('dash-greeting').textContent = gr + ', ' + managerName.split(' ')[0];
+  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var now=new Date();
+  document.getElementById('dash-date').textContent = days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear();
+}
+
+async function loadDashboard() {
+  // First load team if not already loaded
+  if (!_myTeam.length) {
+    try {
+      var td = await fetch(API + '/api/teams/' + encodeURIComponent(managerEmail)).then(function(r){ return r.json(); });
+      _myTeam = td.team || [];
+      updateTeamFilter();
+    } catch(e) { console.error('Team load failed:', e); }
+  }
+
+  // Get selected team member filter
+  var filterEl = document.getElementById('dash-team-filter');
+  var filterEmail = filterEl ? filterEl.value : 'all';
+  var teamToShow = filterEmail === 'all' ? _myTeam : _myTeam.filter(function(m){ return m.agent_email === filterEmail; });
+
+  // Update total agents stat
+  var statAgents = document.getElementById('stat-total-agents');
+  if (statAgents) statAgents.textContent = teamToShow.length || '—';
+
+  if (!teamToShow.length) {
+    document.getElementById('dash-policy-list').innerHTML = '<div style="text-align:center;padding:20px"><div style="font-size:12px;color:var(--text3);margin-bottom:10px">No team members added yet</div><button class="btn btn-purple btn-sm" onclick="setSection(&quot;team&quot;)">Add team members</button></div>';
+    document.getElementById('dash-training-list').innerHTML = '<div style="font-size:12px;color:var(--text3);padding:10px">No team members added yet</div>';
+    document.getElementById('stat-policy-comp').textContent = '—';
+    document.getElementById('stat-training-comp').textContent = '—';
+    document.getElementById('stat-avg-qa').textContent = '—';
+    return;
+  }
+
+  // Load policies
+  var policies = [];
+  try {
+    var pd = await fetch(API + '/api/policies').then(function(r){ return r.json(); });
+    policies = pd.policies || [];
+  } catch(e) {}
+
+  // Load training
+  var courses = [];
+  try {
+    var cd = await fetch(API + '/api/training/courses').then(function(r){ return r.json(); });
+    courses = cd.courses || [];
+  } catch(e) {}
+
+  // Per-agent policy and training data
+  var agentData = [];
+  for (var i = 0; i < teamToShow.length; i++) {
+    var member = teamToShow[i];
+    var agentInfo = { name: member.agent_name, email: member.agent_email, policies_read: 0, policies_total: policies.length, courses_passed: 0, courses_total: courses.length, qa_avg: null };
+    try {
+      var ap = await fetch(API + '/api/policies/agent/' + encodeURIComponent(member.agent_email)).then(function(r){ return r.json(); });
+      var agentPolicies = ap.policies || [];
+      agentInfo.policies_read = agentPolicies.filter(function(p){ return p.acknowledged; }).length;
+      agentInfo.policies_total = agentPolicies.length || policies.length;
+    } catch(e) {}
+    try {
+      var at = await fetch(API + '/api/training/courses/agent/' + encodeURIComponent(member.agent_email)).then(function(r){ return r.json(); });
+      var agentCourses = at.courses || [];
+      agentInfo.courses_passed = agentCourses.filter(function(c){ return c.passed; }).length;
+      agentInfo.courses_total = agentCourses.length || courses.length;
+    } catch(e) {}
+    try {
+      var aq = await fetch(API + '/api/qa/agent/' + encodeURIComponent(member.agent_email)).then(function(r){ return r.json(); });
+      if (aq.summary && aq.summary.avg_score) agentInfo.qa_avg = Math.round(aq.summary.avg_score);
+    } catch(e) {}
+    agentData.push(agentInfo);
+  }
+
+  // Policy compliance panel
+  var polEl = document.getElementById('dash-policy-list');
+  var fullyCompliantPol = agentData.filter(function(a){ return a.policies_read >= a.policies_total && a.policies_total > 0; }).length;
+  document.getElementById('stat-policy-comp').textContent = fullyCompliantPol + '/' + agentData.length;
+  if (!agentData.length) { polEl.innerHTML = '<div style="font-size:12px;color:var(--text3)">No data</div>'; }
+  else {
+    var polHtml = '<div style="display:flex;flex-direction:column;gap:6px">';
+    agentData.forEach(function(a) {
+      var pct = a.policies_total > 0 ? Math.round((a.policies_read / a.policies_total) * 100) : 0;
+      var col = pct === 100 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
+      var initials = a.name.split(' ').map(function(n){ return n[0]; }).join('').substring(0,2);
+      polHtml += '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">';
+      polHtml += '<div style="width:26px;height:26px;border-radius:50%;background:#9333ea;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;flex-shrink:0">' + initials + '</div>';
+      polHtml += '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + a.name + '</div>';
+      polHtml += '<div style="background:var(--bg3);border-radius:3px;height:4px;margin-top:4px;overflow:hidden"><div style="height:100%;background:' + col + ';width:' + pct + '%;border-radius:3px;transition:width .3s"></div></div></div>';
+      polHtml += '<div style="font-size:12px;font-weight:600;color:' + col + ';flex-shrink:0">' + a.policies_read + '/' + a.policies_total + '</div>';
+      polHtml += '</div>';
+    });
+    polHtml += '</div>';
+    polEl.innerHTML = polHtml;
+  }
+
+  // Training completion panel
+  var trainEl = document.getElementById('dash-training-list');
+  var fullyCompliantTrain = agentData.filter(function(a){ return a.courses_passed >= a.courses_total && a.courses_total > 0; }).length;
+  document.getElementById('stat-training-comp').textContent = fullyCompliantTrain + '/' + agentData.length;
+  if (!agentData.length) { trainEl.innerHTML = '<div style="font-size:12px;color:var(--text3)">No data</div>'; }
+  else {
+    var trainHtml = '<div style="display:flex;flex-direction:column;gap:6px">';
+    agentData.forEach(function(a) {
+      var pct = a.courses_total > 0 ? Math.round((a.courses_passed / a.courses_total) * 100) : 0;
+      var col = pct === 100 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--red)';
+      var initials = a.name.split(' ').map(function(n){ return n[0]; }).join('').substring(0,2);
+      trainHtml += '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">';
+      trainHtml += '<div style="width:26px;height:26px;border-radius:50%;background:#9333ea;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;flex-shrink:0">' + initials + '</div>';
+      trainHtml += '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + a.name + '</div>';
+      trainHtml += '<div style="background:var(--bg3);border-radius:3px;height:4px;margin-top:4px;overflow:hidden"><div style="height:100%;background:' + col + ';width:' + pct + '%;border-radius:3px;transition:width .3s"></div></div></div>';
+      trainHtml += '<div style="font-size:12px;font-weight:600;color:' + col + ';flex-shrink:0">' + a.courses_passed + '/' + a.courses_total + '</div>';
+      trainHtml += '</div>';
+    });
+    trainHtml += '</div>';
+    trainEl.innerHTML = trainHtml;
+  }
+
+  // Avg QA score
+  var qaScores = agentData.filter(function(a){ return a.qa_avg !== null; }).map(function(a){ return a.qa_avg; });
+  var avgQA = qaScores.length ? Math.round(qaScores.reduce(function(s,v){ return s+v; }, 0) / qaScores.length) : null;
+  var qaEl = document.getElementById('stat-avg-qa');
+  if (qaEl) {
+    qaEl.textContent = avgQA !== null ? avgQA + '%' : '—';
+    qaEl.style.color = avgQA === null ? 'var(--text3)' : avgQA >= 80 ? 'var(--green)' : avgQA >= 60 ? 'var(--amber)' : 'var(--red)';
+  }
+}
+
+// ===== ACCOUNT SEARCH =====
+// Quick search from dashboard — mirrors managerSearch but uses dash- prefixed inputs
+async function dashSearch() {
+  var q = [
+    document.getElementById('dash-s-ref'),
+    document.getElementById('dash-s-name'),
+    document.getElementById('dash-s-mobile')
+  ].map(function(el){return el?el.value.trim():'';}).find(function(v){return v;});
+  var errEl = document.getElementById('dash-search-err');
+  var resPanel = document.getElementById('dash-search-results');
+  var resList = document.getElementById('dash-search-results-list');
+  if(!q){if(errEl)errEl.textContent='Please enter at least one search term';return;}
+  if(errEl)errEl.textContent='';
+  if(resList)resList.innerHTML='<div style="font-size:12px;color:var(--text3)">Searching...</div>';
+  if(resPanel)resPanel.style.display='block';
+  try {
+    var d = await fetch(API+'/api/agent/search?q='+encodeURIComponent(q)).then(function(r){return r.json();});
+    if(!d.success||!d.accounts.length){
+      resList.innerHTML='<div style="font-size:12px;color:var(--text3)">No accounts found</div>';
+      return;
+    }
+    resList.innerHTML = d.accounts.map(function(a){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;background:var(--bg)" onclick="setSection(&quot;accounts&quot;);setTimeout(function(){loadManagerAccount(&quot;'+a.zinc_ref+'&quot;);},100)">'
+        +'<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+a.first_name+' '+a.last_name+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+a.zinc_ref+' &middot; '+a.client_name+'</div></div>'
+        +'<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--text)">'+fmtCcy(a.balance)+'</div>'
+        +(a.has_plan?'<span class="badge badge-green" style="margin-top:3px">Plan Active</span>':'<span class="badge badge-gray" style="margin-top:3px">No Plan</span>')
+        +'</div></div>';
+    }).join('');
+  } catch(e) {
+    if(errEl)errEl.textContent='Search failed. Please try again.';
+  }
+}
+
+async function managerSearch() {
+  var ref = document.getElementById('ms-ref').value.trim();
+  var car = document.getElementById('ms-car').value.trim();
+  var name = document.getElementById('ms-name').value.trim();
+  var postcode = document.getElementById('ms-postcode').value.trim();
+  var email = document.getElementById('ms-email').value.trim();
+  var mobile = document.getElementById('ms-mobile').value.trim();
+  var err = document.getElementById('ms-err');
+  if (!ref && !car && !name && !postcode && !email && !mobile) { err.textContent='Please enter at least one search field'; return; }
+  err.textContent='';
+  // Use first non-empty field as q param
+  var q = ref || car || name || postcode || email || mobile;
+  var params = new URLSearchParams();
+  params.set('q', q);
+  try {
+    var d = await fetch(API+'/api/agent/search?'+params.toString()).then(function(r){return r.json();});
+    var accounts = d.accounts || [];
+    var rp = document.getElementById('ms-results');
+    var rl = document.getElementById('ms-results-list');
+    document.getElementById('ms-account-view').style.display='none';
+    if (!accounts.length) { rl.innerHTML='<div class="empty-state">No accounts found</div>'; rp.style.display='block'; return; }
+    var html = '';
+    accounts.forEach(function(a){
+      html += '<div class="card-sm" style="margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="loadManagerAccount(\''+a.zinc_ref+'\')">';
+      html += '<div><div style="font-size:13px;font-weight:600;color:var(--text)">' + a.first_name+' '+a.last_name + '</div>';
+      html += '<div style="font-size:11px;color:var(--text3)">' + a.zinc_ref + ' &middot; ' + (a.client_name||'') + '</div></div>';
+      html += '<div style="display:flex;align-items:center;gap:10px">';
+      html += '<span style="font-size:13px;font-weight:600;color:var(--text)">' + fmtCcy(a.balance) + '</span>';
+      html += '<svg width="14" height="14" fill="none" stroke="var(--text3)" stroke-width="2" viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>';
+      html += '</div></div>';
+    });
+    rl.innerHTML = html;
+    rp.style.display='block';
+  } catch(e) { err.textContent='Search failed — '+e.message; }
+}
+
+// ===== MANAGER ACCOUNT VIEW =====
+// Full tabbed account view — mirrors agent workspace
+var _mgrCurrentAccount = null;
+var fmtC = function(n){ return '\xa3'+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); };
+var mgrToday = function(){ return new Date().toISOString().split('T')[0]; };
+var CRM_STATUSES_MGR = [
+  {value:'On dialler',group:'Contact'},{value:'Verified',group:'Contact'},{value:'Bad number',group:'Contact'},
+  {value:'Active payment plan',group:'Arrangement'},{value:'Card payment',group:'Arrangement'},
+  {value:'Promised payment',group:'Arrangement'},{value:'Full & final settlement offer',group:'Arrangement'},
+  {value:'Default',group:'Arrangement'},{value:'Internal query',group:'Query / Hold'},
+  {value:'Client hold',group:'Query / Hold'},{value:'On hold',group:'Vulnerable / Sensitive'},
+  {value:'Vulnerable customer',group:'Vulnerable / Sensitive'},{value:'Level 2 complaint',group:'Vulnerable / Sensitive'},
+];
+
+function buildMgrStatusSelect(id){
+  var sel=document.getElementById(id);if(!sel)return;
+  sel.innerHTML='<option value="">Select status...</option>';
+  var groups={};
+  CRM_STATUSES_MGR.forEach(function(s){if(!groups[s.group])groups[s.group]=[];groups[s.group].push(s);});
+  Object.keys(groups).forEach(function(g){
+    var og=document.createElement('optgroup');og.label=g;
+    groups[g].forEach(function(s){var o=document.createElement('option');o.value=s.value;o.textContent=s.value;og.appendChild(o);});
+    sel.appendChild(og);
+  });
+}
+
+async function mgrPost(path,body){
+  var d=await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({},body,{agent_name:managerName}))}).then(function(r){return r.json();});
+  return d;
+}
+
+async function loadManagerAccount(zinc_ref) {
+  document.getElementById('ms-results').style.display='none';
+  var av = document.getElementById('ms-account-view');
+  av.innerHTML='<div class="empty-state">Loading account...</div>';
+  av.style.display='block';
+  try {
+    var d = await fetch(API+'/api/agent/account/'+zinc_ref).then(function(r){return r.json();});
+    var a = d.account;
+    if(!a){av.innerHTML='<div class="empty-state">Account not found</div>';return;}
+    _mgrCurrentAccount = a;
+
+    var statusBadge = a.vulnerability_flag
+      ? '<span class="badge badge-red">Vulnerable</span>'
+      : a.breathing_space_active
+        ? '<span class="badge badge-amber">Breathing Space</span>'
+        : a.has_plan
+          ? '<span class="badge badge-green">Plan Active</span>'
+          : '<span class="badge badge-gray">No Arrangement</span>';
+
+    var html = '';
+
+    // Top bar
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">';
+    html += '<button class="btn btn-secondary btn-sm" onclick="document.getElementById(\'ms-results\').style.display=\'block\';document.getElementById(\'ms-account-view\').style.display=\'none\'">&larr; Back</button>';
+    html += '<span style="font-size:15px;font-weight:600;color:var(--text)">'+a.first_name+' '+a.last_name+'</span>';
+    html += '<span style="font-size:12px;color:var(--text3)">'+a.zinc_ref+'</span>';
+    html += statusBadge;
+    html += '<span style="margin-left:auto;display:flex;gap:6px">';
+    html += '<button class="btn btn-purple btn-sm" onclick="startQAAuditFromAccount(\''+a.zinc_ref+'\',\''+a.first_name+' '+a.last_name+'\')">QA Audit</button>';
+    html += '</span></div>';
+
+    // 3-col info grid
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">';
+
+    // Account details
+    html += '<div class="card"><div class="section-label">Account details</div><table style="width:100%;font-size:12px"><tbody>';
+    [['Client',a.client_name],['Reference',a.zinc_ref],['Outstanding',fmtCcy(a.balance)],
+     ['Original',fmtCcy(a.original_balance)],
+     ['Plan',a.plan_amount?'\xa3'+a.plan_amount+'/'+(a.plan_frequency||'month'):'None'],
+     ['Last payment',a.last_payment_date?fmtD(a.last_payment_date):'None'],
+     ['Next due',a.next_payment_date?fmtD(a.next_payment_date):'--'],
+     ['Status',a.crm_status||'--'],['Diary',fmtD(a.diary_date)]].forEach(function(r){
+      html+='<tr><td style="padding:4px 0;color:var(--text3);width:42%">'+r[0]+'</td><td style="padding:4px 0;font-weight:500">'+r[1]+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // Contact details
+    html += '<div class="card"><div class="section-label">Contact details</div><table style="width:100%;font-size:12px"><tbody>';
+    [['Email',a.email||'--'],['Mobile',a.mobile||'--'],['Postcode',a.postcode||'--'],
+     ['DOB',a.date_of_birth?fmtD(a.date_of_birth):'--'],['Client ref',a.client_account_ref||'--'],
+     ['Do not call',a.do_not_call?'<span class="badge badge-red">Yes</span>':'No'],
+     ['Do not letter',a.do_not_letter?'<span class="badge badge-red">Yes</span>':'No'],
+     ['Breathing space',a.breathing_space_active?'<span class="badge badge-amber">Active</span>':'No'],
+     ['Gone away',a.gone_away?'<span class="badge badge-amber">Yes</span>':'No']].forEach(function(r){
+      html+='<tr><td style="padding:4px 0;color:var(--text3);width:48%">'+r[0]+'</td><td style="padding:4px 0;font-weight:500">'+r[1]+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // Manager actions card
+    html += '<div class="card"><div class="section-label" style="margin-bottom:10px">Manager actions</div>';
+    html += '<div class="form-group"><label class="form-label">Update status</label>';
+    html += '<select class="form-input" id="mgr-status-select">';
+    ['Active','Broken Plan','Settled','Written Off','Deceased','Disputed','Legal','Hold'].forEach(function(s){
+      html += '<option value="'+s+'"'+(a.crm_status===s?' selected':'')+'>'+s+'</option>';
+    });
+    html += '</select></div>';
+    html += '<div class="form-group"><label class="form-label">Update diary date</label>';
+    html += '<input type="date" class="form-input" id="mgr-diary-date" value="'+(a.diary_date?new Date(a.diary_date).toISOString().split('T')[0]:'')+'"/></div>';
+    html += '<div class="form-group"><label class="form-label">Manager note</label>';
+    html += '<textarea class="form-input" id="mgr-note-text" rows="3" placeholder="Add a manager note..."></textarea></div>';
+    html += '<div style="display:flex;gap:8px">';
+    html += '<button class="btn btn-primary btn-sm" onclick="saveManagerUpdates(\''+a.zinc_ref+'\')">Save changes</button>';
+    html += '</div></div>';
+    html += '</div>';
+
+    // I&E stats
+    if(d.ie && d.ie.length){
+      var ie=d.ie[0];
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">';
+      html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Total income</div><div style="font-size:18px;font-weight:600;color:var(--green)">'+fmtCcy(ie.total_income)+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">Submitted '+fmtD(ie.created_at)+'</div></div>';
+      html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Total expenses</div><div style="font-size:18px;font-weight:600;color:var(--red)">'+fmtCcy(ie.total_expenses)+'</div></div>';
+      html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Disposable income</div><div style="font-size:18px;font-weight:600;color:'+(ie.surplus>0?'var(--green)':'var(--red)')+'">'+fmtCcy(ie.surplus)+'</div></div>';
+      html += '</div>';
+    }
+
+    // Agent action tabs
+    html += '<div class="card" style="margin-bottom:12px">';
+    html += '<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;overflow-x:auto">';
+    var tabList=[['call-actions','Call Actions'],['activity','Activity'],['notes','Notes'],['third-party','3rd Party'],['dmc','DMC']];
+    tabList.forEach(function(t,i){
+      html += '<button id="mgr-tab-btn-'+t[0]+'" onclick="showMgrTab(\''+t[0]+'\')" style="font-size:12px;padding:8px 12px;border:none;border-bottom:2px solid '+(i===0?'var(--accent)':'transparent')+';background:none;cursor:pointer;color:'+(i===0?'var(--accent)':'var(--text2)')+';white-space:nowrap;font-weight:'+(i===0?'600':'400')+'">'+t[1]+'</button>';
+    });
+    html += '</div>';
+
+    // Call actions pane
+    html += '<div id="mgr-pane-call-actions">';
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px" id="mgr-action-tiles">';
+    var tiles=[
+      {id:'ptp',bg:'var(--green-bg)',title:'Promise to Pay',desc:'Record a PTP commitment'},
+      {id:'payment',bg:'var(--amber-bg)',title:'Take a Payment',desc:'Record phone payment'},
+      {id:'dd',bg:'var(--accent-bg)',title:'Set Up DD',desc:'Direct debit arrangement'},
+      {id:'status',bg:'var(--accent-bg)',title:'Change Status',desc:'Update CRM status & diary'},
+      {id:'diary',bg:'var(--bg3)',title:'Set Diary Date',desc:'Schedule callback'},
+      {id:'vulnerability',bg:'var(--red-bg)',title:'Flag Vulnerability',desc:'Texas process'},
+    ];
+    var tileIcons={
+      ptp:'<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+      payment:'<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
+      dd:'<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>',
+      status:'<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+      diary:'<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+      vulnerability:'<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
+    };
+    var tileColors={ptp:'var(--green)',payment:'var(--amber)',dd:'var(--accent)',status:'var(--accent)',diary:'var(--text2)',vulnerability:'var(--red)'};
+    tiles.forEach(function(t){
+      html += '<div class="mgr-action-tile" onclick="mgrSelectAction(&quot;'+t.id+'&quot;)" style="padding:12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;background:var(--bg)">';
+      html += '<div style="width:32px;height:32px;border-radius:8px;background:'+t.bg+';display:flex;align-items:center;justify-content:center;margin-bottom:8px;color:'+tileColors[t.id]+'">'+(tileIcons[t.id]||'')+'</div>';
+      html += '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px">'+t.title+'</div>';
+      html += '<div style="font-size:11px;color:var(--text3)">'+t.desc+'</div></div>';
+    });
+    html += '</div>';
+    html += '<div id="mgr-action-form-area"></div>';
+    html += '</div>';
+
+    // Activity pane
+    html += '<div id="mgr-pane-activity" style="display:none">';
+    html += '<div id="mgr-activity-pane-list"><div style="font-size:12px;color:var(--text3)">Loading...</div></div>';
+    html += '</div>';
+
+    // Notes pane — list + add note form
+    html += '<div id="mgr-pane-notes" style="display:none">';
+    html += '<div style="margin-bottom:14px;padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg)">';
+    html += '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Add note</div>';
+    html += '<div class="form-group"><label class="form-label">Note type</label><select class="form-input" id="mgr-note-type-input"><option value="call_note">Call note</option><option value="complaint">Complaint</option><option value="dispute">Dispute</option><option value="vulnerability">Vulnerability</option><option value="general">General</option></select></div>';
+    html += '<div class="form-group"><label class="form-label">Note</label><textarea class="form-input" id="mgr-note-input" rows="3" placeholder="Enter note — full English, no shorthand"></textarea></div>';
+    html += '<button class="btn btn-primary btn-sm" onclick="mgrSubmitNote()">Save note</button>';
+    html += '</div>';
+    html += '<div id="mgr-notes-pane-list"><div style="font-size:12px;color:var(--text3)">Loading...</div></div>';
+    html += '</div>';
+
+    // 3rd Party pane
+    html += '<div id="mgr-pane-third-party" style="display:none">';
+    html += '<div class="form-group"><label class="form-label">Name</label><input class="form-input" id="mgr-tp-name" placeholder="Full name"/></div>';
+    html += '<div class="form-group"><label class="form-label">Relationship</label><input class="form-input" id="mgr-tp-rel" placeholder="e.g. Solicitor, Spouse"/></div>';
+    html += '<div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="mgr-tp-phone" placeholder="Contact number"/></div>';
+    html += '<button class="btn btn-primary btn-sm" onclick="mgrSaveThirdParty()">Save third party</button>';
+    html += '</div>';
+
+    // DMC pane
+    html += '<div id="mgr-pane-dmc" style="display:none">';
+    html += '<div class="form-group"><label class="form-label">Company name</label><input class="form-input" id="mgr-dmc-name" placeholder="DMC name"/></div>';
+    html += '<div class="form-group"><label class="form-label">Reference</label><input class="form-input" id="mgr-dmc-ref" placeholder="Reference number"/></div>';
+    html += '<div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="mgr-dmc-phone" placeholder="Contact number"/></div>';
+    html += '<div class="form-group"><label class="form-label">Monthly amount</label><input type="number" class="form-input" id="mgr-dmc-amount" placeholder="0.00" step="0.01"/></div>';
+    html += '<button class="btn btn-primary btn-sm" onclick="mgrSaveDMC()">Save DMC details</button>';
+    html += '</div>';
+
+    html += '</div>';
+
+    // Recent activity
+    html += '<div class="card"><div class="section-label" style="margin-bottom:10px">Recent activity</div>';
+    html += '<div id="mgr-account-activity"><div style="font-size:12px;color:var(--text3)">Loading...</div></div></div>';
+
+    av.innerHTML = html;
+
+    // Populate activity
+    var actEl=document.getElementById('mgr-account-activity');
+    var actEl2=document.getElementById('mgr-activity-pane-list');
+    var actions=d.actions||[];
+    if(!actions.length){
+      actEl.innerHTML='<div style="font-size:12px;color:var(--text3)">No activity recorded</div>';
+      if(actEl2)actEl2.innerHTML='<div style="font-size:12px;color:var(--text3)">No activity recorded</div>';
+    } else {
+      var ah='<table class="data-table"><thead><tr><th>Date</th><th>Action</th><th>Agent</th><th>Notes</th></tr></thead><tbody>';
+      actions.slice(0,15).forEach(function(act){
+        var agName='--';try{var ad=JSON.parse(act.action_data||'{}');agName=ad.agent_name||act.agent_email||'--';}catch(e){}
+        // Note text can be in notes field directly or inside action_data
+        var noteDisp=act.crm_note_template||act.notes||act.note_text||'';
+        ah+='<tr><td>'+fmtDT(act.created_at)+'</td><td>'+act.action_type+'</td><td style="color:var(--text3)">'+agName+'</td><td style="color:var(--text2)">'+noteDisp.substring(0,80)+'</td></tr>';
+      });
+      ah+='</tbody></table>';
+      actEl.innerHTML=ah;
+      if(actEl2)actEl2.innerHTML=ah;
+    }
+
+  } catch(e){av.innerHTML='<div class="empty-state">Failed to load account</div>';console.error(e);}
+}
+
+// Tab switcher
+function showMgrTab(name){
+  var tabs=['call-actions','activity','notes','third-party','dmc'];
+  tabs.forEach(function(t){
+    var pane=document.getElementById('mgr-pane-'+t);
+    var btn=document.getElementById('mgr-tab-btn-'+t);
+    if(pane)pane.style.display=t===name?'block':'none';
+    if(btn){btn.style.borderBottomColor=t===name?'var(--accent)':'transparent';btn.style.color=t===name?'var(--accent)':'var(--text2)';btn.style.fontWeight=t===name?'600':'400';}
+  });
+  if(name==='notes')mgrLoadNotes();
+  if(name==='activity'){
+    var actEl2=document.getElementById('mgr-activity-pane-list');
+    if(actEl2&&actEl2.innerHTML.indexOf('Loading')>-1)actEl2.innerHTML='<div style="font-size:12px;color:var(--text3)">See Recent Activity below</div>';
+  }
+}
+
+// Action tile selector
+function mgrSelectAction(type){
+  document.querySelectorAll('.mgr-action-tile').forEach(function(t){t.style.borderColor='var(--border)';});
+  var clicked=document.querySelector('.mgr-action-tile[onclick="mgrSelectAction(\''+type+'\')"]');
+  if(clicked)clicked.style.borderColor='var(--accent)';
+  var area=document.getElementById('mgr-action-form-area');
+  if(type==='ptp')area.innerHTML=mgrPtpForm();
+  else if(type==='payment')area.innerHTML=mgrPaymentForm();
+  else if(type==='dd')area.innerHTML=mgrDDForm();
+  else if(type==='status'){area.innerHTML=mgrStatusForm();buildMgrStatusSelect('mgr-status-action-select');}
+  else if(type==='diary')area.innerHTML=mgrDiaryForm();
+  else if(type==='vulnerability')area.innerHTML=mgrVulnForm();
+}
+function mgrClearAction(){
+  var area=document.getElementById('mgr-action-form-area');
+  if(area)area.innerHTML='';
+  document.querySelectorAll('.mgr-action-tile').forEach(function(t){t.style.borderColor='var(--border)';});
+}
+
+// Action forms
+function mgrPtpForm(){return '<div class="card" style="margin-top:10px"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Promise to Pay</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label class="form-label">Amount</label><input type="number" class="form-input" id="mgr-ptp-amount" placeholder="0.00" step="0.01"/></div><div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="mgr-ptp-date"/></div></div><div class="form-group"><label class="form-label">Method</label><select class="form-input" id="mgr-ptp-method"><option>Card</option><option>Bank transfer</option><option>Cash</option><option>Cheque</option></select></div><div class="form-group"><label class="form-label">Note</label><textarea class="form-input" id="mgr-ptp-note" rows="2" placeholder="Add note..."></textarea></div><div style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="mgrSubmitPTP()">Record PTP</button><button class="btn btn-secondary btn-sm" onclick="mgrClearAction()">Cancel</button></div></div>';}
+function mgrPaymentForm(){return '<div class="card" style="margin-top:10px"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Take a Payment</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label class="form-label">Amount</label><input type="number" class="form-input" id="mgr-pay-amount" placeholder="0.00" step="0.01"/></div><div class="form-group"><label class="form-label">Method</label><select class="form-input" id="mgr-pay-method"><option>Card</option><option>Bank transfer</option><option>Cash</option><option>Cheque</option></select></div></div><div class="form-group"><label class="form-label">Reference</label><input class="form-input" id="mgr-pay-ref" placeholder="Transaction ID"/></div><div class="form-group"><label class="form-label">Note</label><textarea class="form-input" id="mgr-pay-note" rows="2" placeholder="Add note..."></textarea></div><div style="display:flex;gap:8px"><button class="btn btn-amber btn-sm" onclick="mgrSubmitPayment()">Record Payment</button><button class="btn btn-secondary btn-sm" onclick="mgrClearAction()">Cancel</button></div></div>';}
+function mgrDDForm(){return '<div class="card" style="margin-top:10px"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Set Up Direct Debit</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label class="form-label">Account holder</label><input class="form-input" id="mgr-dd-name" placeholder="Name on account"/></div><div class="form-group"><label class="form-label">Sort code</label><input class="form-input" id="mgr-dd-sort" placeholder="00-00-00"/></div><div class="form-group"><label class="form-label">Account number</label><input class="form-input" id="mgr-dd-account" placeholder="12345678"/></div><div class="form-group"><label class="form-label">Amount</label><input type="number" class="form-input" id="mgr-dd-amount" placeholder="0.00" step="0.01"/></div><div class="form-group"><label class="form-label">Frequency</label><select class="form-input" id="mgr-dd-freq"><option value="monthly">Monthly</option><option value="fortnightly">Fortnightly</option><option value="weekly">Weekly</option></select></div><div class="form-group"><label class="form-label">First payment date</label><input type="date" class="form-input" id="mgr-dd-start"/></div></div><div class="form-group"><label class="form-label">Note</label><textarea class="form-input" id="mgr-dd-note" rows="2" placeholder="Add note..."></textarea></div><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="mgrSubmitDD()">Set Up DD</button><button class="btn btn-secondary btn-sm" onclick="mgrClearAction()">Cancel</button></div></div>';}
+function mgrStatusForm(){return '<div class="card" style="margin-top:10px"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Change CRM Status</div><div class="form-group"><label class="form-label">New status</label><select class="form-input" id="mgr-status-action-select"></select></div><div class="form-group"><label class="form-label">Diary date</label><input type="date" class="form-input" id="mgr-status-diary" value="'+mgrToday()+'"/></div><div class="form-group"><label class="form-label">Note</label><textarea class="form-input" id="mgr-status-note" rows="2" placeholder="Add note..."></textarea></div><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="mgrSubmitStatus()">Update Status</button><button class="btn btn-secondary btn-sm" onclick="mgrClearAction()">Cancel</button></div></div>';}
+function mgrDiaryForm(){return '<div class="card" style="margin-top:10px"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Set Diary Date</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="mgr-diary-date-action" value="'+mgrToday()+'"/></div><div class="form-group"><label class="form-label">Type</label><select class="form-input" id="mgr-diary-type"><option>Call back</option><option>Payment due</option><option>Review</option><option>Follow up</option></select></div></div><div class="form-group"><label class="form-label">Note</label><textarea class="form-input" id="mgr-diary-note" rows="2" placeholder="Reason..."></textarea></div><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="mgrSubmitDiary()">Set Diary</button><button class="btn btn-secondary btn-sm" onclick="mgrClearAction()">Cancel</button></div></div>';}
+function mgrVulnForm(){return '<div class="card" style="margin-top:10px"><div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:10px">Flag Vulnerability</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px"><label style="display:flex;align-items:center;gap:7px;padding:7px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px"><input type="checkbox" id="mgr-vuln-health" style="width:auto"/>Health</label><label style="display:flex;align-items:center;gap:7px;padding:7px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px"><input type="checkbox" id="mgr-vuln-life" style="width:auto"/>Life Events</label><label style="display:flex;align-items:center;gap:7px;padding:7px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px"><input type="checkbox" id="mgr-vuln-resilience" style="width:auto"/>Financial Resilience</label><label style="display:flex;align-items:center;gap:7px;padding:7px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px"><input type="checkbox" id="mgr-vuln-capability" style="width:auto"/>Capability</label></div><div class="form-group"><label class="form-label">Next status</label><select class="form-input" id="mgr-vuln-next"><option value="On hold">On hold (recommended)</option><option value="Vulnerable customer">Vulnerable customer</option></select></div><div class="form-group"><label class="form-label">Detail (required)</label><textarea class="form-input" id="mgr-vuln-detail" rows="3" placeholder="Describe vulnerability..."></textarea></div><div style="display:flex;gap:8px"><button class="btn btn-danger btn-sm" onclick="mgrSubmitVulnerability()">Record Vulnerability</button><button class="btn btn-secondary btn-sm" onclick="mgrClearAction()">Cancel</button></div></div>';}
+
+// Submit functions
+async function mgrSubmitPTP(){
+  if(!_mgrCurrentAccount){notify('No account loaded');return;}
+  var amount=document.getElementById('mgr-ptp-amount').value,date=document.getElementById('mgr-ptp-date').value;
+  if(!amount||!date){notify('Please enter amount and date');return;}
+  var d=await mgrPost('/api/agent/ptp',{zinc_ref:_mgrCurrentAccount.zinc_ref,amount:amount,date:date,method:document.getElementById('mgr-ptp-method').value,note:document.getElementById('mgr-ptp-note').value});
+  if(d.success){notify('Promise to Pay recorded');mgrClearAction();}else notify(d.error||'Failed');
+}
+async function mgrSubmitPayment(){
+  if(!_mgrCurrentAccount){notify('No account loaded');return;}
+  var amount=document.getElementById('mgr-pay-amount').value;
+  if(!amount||parseFloat(amount)<=0){notify('Please enter a valid amount');return;}
+  var d=await mgrPost('/api/agent/payment',{zinc_ref:_mgrCurrentAccount.zinc_ref,amount:amount,method:document.getElementById('mgr-pay-method').value,reference:document.getElementById('mgr-pay-ref').value,note:document.getElementById('mgr-pay-note').value});
+  if(d.success){notify('Payment recorded');mgrClearAction();}else notify(d.error||'Failed');
+}
+async function mgrSubmitDD(){
+  if(!_mgrCurrentAccount){notify('No account loaded');return;}
+  var name=document.getElementById('mgr-dd-name').value,sort=document.getElementById('mgr-dd-sort').value;
+  var acct=document.getElementById('mgr-dd-account').value,amount=document.getElementById('mgr-dd-amount').value;
+  var start=document.getElementById('mgr-dd-start').value;
+  if(!name||!sort||!acct||!amount||!start){notify('Please fill all required fields');return;}
+  var freq=document.getElementById('mgr-dd-freq').value,note=document.getElementById('mgr-dd-note').value;
+  var d=await mgrPost('/api/agent/note',{zinc_ref:_mgrCurrentAccount.zinc_ref,note_type:'plan_setup',note_text:'[DD SETUP] Name: '+name+' | Sort: '+sort+' | Account: '+acct+' | Amount: '+fmtC(amount)+' | Freq: '+freq+' | Start: '+start+(note?' | '+note:'')});
+  if(d.success){notify('DD arrangement recorded');mgrClearAction();}else notify(d.error||'Failed');
+}
+async function mgrSubmitStatus(){
+  if(!_mgrCurrentAccount){notify('No account loaded');return;}
+  var status=document.getElementById('mgr-status-action-select').value;
+  if(!status){notify('Please select a status');return;}
+  var d=await mgrPost('/api/agent/status',{zinc_ref:_mgrCurrentAccount.zinc_ref,status:status,diary_date:document.getElementById('mgr-status-diary').value,note:document.getElementById('mgr-status-note').value});
+  if(d.success){notify('Status updated: '+status);mgrClearAction();}else notify(d.error||'Failed');
+}
+async function mgrSubmitDiary(){
+  if(!_mgrCurrentAccount){notify('No account loaded');return;}
+  var date=document.getElementById('mgr-diary-date-action').value;
+  if(!date){notify('Please select a date');return;}
+  var d=await mgrPost('/api/agent/diary',{zinc_ref:_mgrCurrentAccount.zinc_ref,diary_date:date,note_type:document.getElementById('mgr-diary-type').value,note:document.getElementById('mgr-diary-note').value});
+  if(d.success){notify('Diary date set');mgrClearAction();}else notify(d.error||'Failed');
+}
+async function mgrSubmitVulnerability(){
+  if(!_mgrCurrentAccount){notify('No account loaded');return;}
+  var cats=[];
+  if(document.getElementById('mgr-vuln-health').checked)cats.push('Health');
+  if(document.getElementById('mgr-vuln-life').checked)cats.push('Life Events');
+  if(document.getElementById('mgr-vuln-resilience').checked)cats.push('Financial Resilience');
+  if(document.getElementById('mgr-vuln-capability').checked)cats.push('Capability');
+  if(!cats.length){notify('Please select at least one category');return;}
+  if(!document.getElementById('mgr-vuln-detail').value){notify('Please add detail');return;}
+  var d=await mgrPost('/api/agent/vulnerability',{zinc_ref:_mgrCurrentAccount.zinc_ref,categories:cats,detail:document.getElementById('mgr-vuln-detail').value,next_status:document.getElementById('mgr-vuln-next').value});
+  if(d.success){notify('Vulnerability recorded');mgrClearAction();}else notify(d.error||'Failed');
+}
+// Save note via accounts/actions endpoint (same as manager update notes)
+async function mgrSubmitNote(){
+  if(!_mgrCurrentAccount){notify('No account loaded');return;}
+  var text=document.getElementById('mgr-note-input');
+  if(!text||!text.value.trim()){notify('Please enter a note');return;}
+  var type=document.getElementById('mgr-note-type-input');
+  try{
+    var resp=await fetch(API+'/api/accounts/'+_mgrCurrentAccount.zinc_ref+'/actions',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action_type:type?type.value:'Manager Note',notes:text.value.trim(),agent_email:managerEmail,agent_name:managerName})
+    });
+    var d=await resp.json();
+    notify('Note saved');text.value='';
+    setTimeout(mgrLoadNotes,400);
+  }catch(e){notify('Failed to save note');}
+}
+
+async function mgrSaveThirdParty(){
+  if(!_mgrCurrentAccount){notify('No account loaded');return;}
+  var name=document.getElementById('mgr-tp-name').value;
+  if(!name){notify('Please enter a name');return;}
+  var rel=document.getElementById('mgr-tp-rel').value,phone=document.getElementById('mgr-tp-phone').value;
+  var d=await mgrPost('/api/agent/note',{zinc_ref:_mgrCurrentAccount.zinc_ref,note_type:'third_party',note_text:'[3RD PARTY] '+name+(rel?' ('+rel+')':'')+' | Tel: '+phone});
+  if(d.success){notify('Third party saved');}else notify(d.error||'Failed');
+}
+async function mgrSaveDMC(){
+  if(!_mgrCurrentAccount){notify('No account loaded');return;}
+  var name=document.getElementById('mgr-dmc-name').value;
+  if(!name){notify('Please enter a company name');return;}
+  var ref=document.getElementById('mgr-dmc-ref').value,phone=document.getElementById('mgr-dmc-phone').value,amount=document.getElementById('mgr-dmc-amount').value;
+  var d=await mgrPost('/api/agent/note',{zinc_ref:_mgrCurrentAccount.zinc_ref,note_type:'general',note_text:'[DMC] '+name+(ref?' | Ref: '+ref:'')+(phone?' | Tel: '+phone:'')+(amount?' | Monthly: '+fmtC(amount):'')});
+  if(d.success){notify('DMC saved');}else notify(d.error||'Failed');
+}
+function mgrToggleNotes(total){
+  var h=document.getElementById('mgr-notes-hidden');
+  var b=document.getElementById('mgr-notes-toggle');
+  if(!h||!b)return;
+  if(h.style.display==='none'){h.style.display='block';b.textContent='Show fewer notes';}
+  else{h.style.display='none';b.textContent='Show all '+total+' notes';}
+}
+
+// Load notes from actions endpoint, filtering for note-type actions
+async function mgrLoadNotes(){
+  var el=document.getElementById('mgr-notes-pane-list');
+  if(!el||!_mgrCurrentAccount)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--text3)">Loading...</div>';
+  try{
+    var d=await fetch(API+'/api/agent/account/'+_mgrCurrentAccount.zinc_ref).then(function(r){return r.json();});
+    var actions=d.actions||[];
+    // Debug: log first action to see structure
+    // Filter to note-like actions only
+    var noteTypes=['call_note','complaint','dispute','vulnerability','general','third_party','note','Manager Note'];
+    var notes=actions.filter(function(a){
+      return noteTypes.indexOf(a.action_type)>-1||a.notes;
+    });
+    if(!notes.length){el.innerHTML='<div style="font-size:12px;color:var(--text3)">No notes recorded</div>';return;}
+    // Render notes — show 5 by default with expand toggle
+    var SHOW=2;
+    function renderNoteItem(n){
+      var agName='--';try{var ad=JSON.parse(n.action_data||'{}');agName=ad.agent_name||n.agent_email||'--';}catch(e){}
+      return '<div style="padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
+        +'<span style="font-size:11px;font-weight:600;color:var(--text2)">'+n.action_type+'</span>'
+        +'<span style="font-size:11px;color:var(--text3)">'+fmtDT(n.created_at)+' &middot; '+agName+'</span>'
+        +'</div>'
+        +'<div style="font-size:12px;color:var(--text)">'+(n.crm_note_template||n.notes||n.note_text||'--')+'</div>'
+        +'</div>';
+    }
+    var visible=notes.slice(0,SHOW);
+    var hidden=notes.slice(SHOW);
+    var html=visible.map(renderNoteItem).join('');
+    if(hidden.length){
+      html+='<div id="mgr-notes-hidden" style="display:none">'+hidden.map(renderNoteItem).join('')+'</div>';
+      html+='<button id="mgr-notes-toggle" onclick="mgrToggleNotes('+notes.length+')" style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:4px 0">Show all '+notes.length+' notes</button>';
+    }
+    el.innerHTML=html;
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--text3)">Failed to load notes</div>';console.error(e);}
+}
+
+async function saveManagerUpdates(zinc_ref) {
+  var status = document.getElementById('mgr-status-select') ? document.getElementById('mgr-status-select').value : null;
+  var diary = document.getElementById('mgr-diary-date') ? document.getElementById('mgr-diary-date').value : null;
+  var note = document.getElementById('mgr-note-text') ? document.getElementById('mgr-note-text').value.trim() : null;
+  try {
+    if(status || diary) {
+      await fetch(API+'/api/accounts/'+zinc_ref+'/manager-update', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ status, diary_date: diary, manager_email: managerEmail, manager_name: managerName })
+      });
+    }
+    if(note) {
+      await fetch(API+'/api/accounts/'+zinc_ref+'/actions', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action_type:'Manager Note', notes: note, agent_email: managerEmail, agent_name: managerName })
+      });
+      document.getElementById('mgr-note-text').value='';
+    }
+    notify('Account updated');
+  } catch(e) { notify('Failed to save: '+e.message); }
+}
+
+// ===== AGENTS =====
+async function loadAgents() {
+  var el = document.getElementById('agents-list');
+  el.innerHTML='<div class="empty-state">Loading agents...</div>';
+  try {
+    // Load from team list
+    if (!_myTeam.length) {
+      var td2 = await fetch(API+'/api/teams/'+encodeURIComponent(managerEmail)).then(function(r){return r.json();});
+      _myTeam = td2.team || [];
+    }
+    if (!_myTeam.length) {
+      el.innerHTML='<div class="empty-state" style="padding:30px"><div style="font-size:13px;color:var(--text);margin-bottom:8px">No team members added yet</div><div style="font-size:12px;color:var(--text3);margin-bottom:12px">Add agents to your team to see their overview here</div><button class="btn btn-purple btn-sm" onclick="setSection(&quot;team&quot;)">Go to My Team</button></div>';
+      return;
+    }
+    var policies = [], courses = [];
+    try {
+      var pd = await fetch(API+'/api/policies').then(function(r){return r.json();}); policies = pd.policies||[];
+      var cd = await fetch(API+'/api/training/courses').then(function(r){return r.json();}); courses = cd.courses||[];
+    } catch(e){}
+
+    var html='';
+    for (var i=0; i<_myTeam.length; i++) {
+      var member = _myTeam[i];
+      var policies_read=0, policies_total=policies.length, courses_passed=0, courses_total=courses.length, qa_avg=null;
+      try {
+        var ap = await fetch(API+'/api/policies/agent/'+encodeURIComponent(member.agent_email)).then(function(r){return r.json();});
+        var agPol = ap.policies||[];
+        policies_read = agPol.filter(function(p){return p.acknowledged;}).length;
+        policies_total = agPol.length||policies.length;
+      } catch(e){}
+      try {
+        var at = await fetch(API+'/api/training/courses/agent/'+encodeURIComponent(member.agent_email)).then(function(r){return r.json();});
+        var agCrs = at.courses||[];
+        courses_passed = agCrs.filter(function(c){return c.passed;}).length;
+        courses_total = agCrs.length||courses.length;
+      } catch(e){}
+      try {
+        var aq = await fetch(API+'/api/qa/agent/'+encodeURIComponent(member.agent_email)).then(function(r){return r.json();});
+        if(aq.summary&&aq.summary.avg_score) qa_avg=Math.round(aq.summary.avg_score);
+      } catch(e){}
+      var pct_p = policies_total ? Math.round((policies_read/policies_total)*100) : 0;
+      var pct_t = courses_total ? Math.round((courses_passed/courses_total)*100) : 0;
+      var name = member.agent_name || member.agent_email.split('@')[0];
+      var initials = name.split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
+      var safeEmail = member.agent_email.replace(/'/g,"\'");
+      var safeName = name.replace(/'/g,"\'");
+      html+='<div class="agent-card" onclick="viewAgentDetail(\'' + safeEmail + '\',\'' + safeName + '\')">'; 
+      html+='<div class="agent-avatar">'+initials+'</div>';
+      html+='<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">'+name+'</div><div style="font-size:11px;color:var(--text3)">'+member.agent_email+'</div></div>';
+      html+='<div style="display:flex;gap:20px;align-items:center">';
+      html+='<div style="text-align:center"><div style="font-size:18px;font-weight:600;color:'+(pct_p>=80?'var(--green)':pct_p>=50?'var(--amber)':'var(--red)')+'">'+pct_p+'%</div><div style="font-size:10px;color:var(--text3)">Policies</div></div>';
+      html+='<div style="text-align:center"><div style="font-size:18px;font-weight:600;color:'+(pct_t>=80?'var(--green)':pct_t>=50?'var(--amber)':'var(--red)')+'">'+pct_t+'%</div><div style="font-size:10px;color:var(--text3)">Training</div></div>';
+      html+='<div style="text-align:center"><div style="font-size:18px;font-weight:600;color:'+(qa_avg===null?'var(--text3)':qa_avg>=80?'var(--green)':qa_avg>=60?'var(--amber)':'var(--red)')+'">'+( qa_avg!==null?qa_avg+'%':'—')+'</div><div style="font-size:10px;color:var(--text3)">QA score</div></div>';
+      html+='</div></div>';
+    }
+    el.innerHTML=html;
+  } catch(e) { el.innerHTML='<div class="empty-state">Failed to load agents</div>'; console.error(e); }
+}
+
+// ===== QA SEARCH =====
+async function qaSearch() {
+  var ref = document.getElementById('qa-ref').value.trim();
+  var name = document.getElementById('qa-name').value.trim();
+  var car = document.getElementById('qa-car').value.trim();
+  var err = document.getElementById('qa-search-err');
+  if(!ref && !name && !car) { err.textContent='Please enter a search term'; return; }
+  err.textContent='';
+  var q = ref || name || car;
+  var params = new URLSearchParams();
+  params.set('q', q);
+  try {
+    var d = await fetch(API+'/api/agent/search?'+params.toString()).then(function(r){return r.json();});
+    var accounts = d.accounts || [];
+    var el = document.getElementById('qa-search-results');
+    if(!accounts.length) { el.innerHTML='<div class="empty-state">No accounts found</div>'; el.style.display='block'; return; }
+    var html='';
+    accounts.forEach(function(a){
+      html+='<div class="card-sm" style="margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="startQAAuditFromAccount(\''+a.zinc_ref+'\',\''+a.first_name+' '+a.last_name+'\')">';
+      html+='<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+a.first_name+' '+a.last_name+'</div>';
+      html+='<div style="font-size:11px;color:var(--text3)">'+a.zinc_ref+' &middot; '+(a.client_name||'')+'</div></div>';
+      html+='<button class="btn btn-purple btn-sm">Start QA audit &rarr;</button></div>';
+    });
+    el.innerHTML=html;
+    el.style.display='block';
+  } catch(e) { err.textContent='Search failed'; }
+}
+
+async function startQAAuditFromAccount(zinc_ref, name) {
+  if(!document.getElementById('section-qa-audit').classList.contains('active')) {
+    setSection('qa-audit');
+  }
+  // Show split screen
+  document.getElementById('qa-search-state').style.display='none';
+  document.getElementById('qa-audit-state').style.display='block';
+  document.getElementById('qa-scorecard-area').style.display='block';
+  // Set name in panel header
+  var panelName = document.getElementById('qa-panel-name');
+  if(panelName) panelName.textContent = name + ' — ' + zinc_ref;
+  // Render scorecard on right
+  renderQAScorecard(zinc_ref, name);
+  // Load account on left
+  loadQAAccountPanel(zinc_ref);
+}
+
+async function loadQAAccountPanel(zinc_ref) {
+  var el = document.getElementById('qa-account-panel');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var d = await fetch(API+'/api/agent/account/'+zinc_ref).then(function(r){return r.json();});
+    var a = d.account;
+    if (!a) { el.innerHTML='<div class="empty-state">Account not found</div>'; return; }
+    var html = '';
+
+    // Account summary
+    html += '<div class="card-sm" style="margin-bottom:10px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">'+a.first_name+' '+a.last_name+'</div>';
+    html += '<div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+a.zinc_ref+' &middot; '+(a.client_name||'')+'</div>';
+    if(a.vulnerability_flag) html += '<span class="badge badge-red" style="margin-bottom:6px;display:inline-block">Vulnerable</span><br>';
+    var rows = [
+      ['Outstanding', '<strong>'+fmtCcy(a.balance)+'</strong>'],
+      ['Original', fmtCcy(a.original_balance)],
+      ['Plan', a.plan_amount ? '<strong>£'+a.plan_amount+'/'+( a.plan_frequency||'month')+'</strong>' : '<span style="color:var(--text3)">None</span>'],
+      ['Next payment', fmtD(a.next_payment_date)],
+      ['Last payment', fmtD(a.last_payment_date)+(a.last_payment_amt?' <span style="color:var(--green)">('+fmtCcy(a.last_payment_amt)+')</span>':'')],
+      ['CRM Status', '<span class="badge badge-blue">'+( a.crm_status||a.account_status||'Active')+'</span>'],
+      ['Diary', fmtD(a.diary_date)],
+      ['Product', a.product_type||'—'],
+      ['Client ref', a.client_account_ref||'—'],
+    ];
+    html += '<table style="width:100%;font-size:11px"><tbody>';
+    rows.forEach(function(r){
+      html += '<tr><td style="padding:4px 0;color:var(--text3);width:42%;vertical-align:top">'+r[0]+'</td><td style="padding:4px 0;color:var(--text)">'+r[1]+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // I&E
+    if (d.ie && d.ie.length) {
+      var ie = d.ie[0];
+      html += '<div class="card-sm" style="margin-bottom:10px">';
+      html += '<div class="section-label" style="margin-bottom:6px">Income & Expenditure <span style="font-size:10px;color:var(--text3);font-weight:400">'+fmtD(ie.created_at)+'</span></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">';
+      html += '<div style="background:var(--green-bg);border-radius:4px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:var(--text3)">Income</div><div style="font-size:13px;font-weight:700;color:var(--green)">'+fmtCcy(ie.total_income)+'</div></div>';
+      html += '<div style="background:var(--red-bg);border-radius:4px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:var(--text3)">Expenses</div><div style="font-size:13px;font-weight:700;color:var(--red)">'+fmtCcy(ie.total_expenses)+'</div></div>';
+      html += '</div>';
+      var surplus = parseFloat(ie.surplus||0);
+      html += '<div style="background:'+(surplus>=0?'var(--green-bg)':'var(--red-bg)')+';border-radius:4px;padding:6px 8px;text-align:center;margin-bottom:8px"><div style="font-size:10px;color:var(--text3)">Surplus / Deficit</div><div style="font-size:14px;font-weight:700;color:'+(surplus>=0?'var(--green)':'var(--red)')+'">'+fmtCcy(surplus)+'</div></div>';
+      // Full breakdown
+      html += '<details style="margin-bottom:4px"><summary style="font-size:11px;color:var(--text3);cursor:pointer;margin-bottom:6px">Full breakdown</summary>';
+      html += '<table style="width:100%;font-size:11px"><tbody>';
+      var ieRows=[['Employment income',ie.employment_income],['Benefits',ie.benefits],['Pension',ie.pension],['Other income',ie.other_income],
+        ['—',''],['Mortgage/Rent',ie.mortgage_rent],['Council tax',ie.council_tax],['Gas/Electric',ie.gas_electric],['Water',ie.water],
+        ['Food',ie.food],['Transport',ie.transport],['Childcare',ie.childcare],['Insurance',ie.insurance],['Other expenses',ie.other_expenses]];
+      ieRows.forEach(function(r){
+        if(r[0]==='—'){html+='<tr><td colspan="2" style="border-top:1px solid var(--border);padding:3px 0"></td></tr>';return;}
+        if(!r[1]||r[1]==0||r[1]=='0.00'||r[1]=='0') return;
+        html+='<tr><td style="padding:2px 0;color:var(--text3)">'+r[0]+'</td><td style="padding:2px 0;text-align:right">'+fmtCcy(r[1])+'</td></tr>';
+      });
+      html += '</tbody></table></details>';
+      if(ie.agent_notes) html += '<div style="padding:6px 8px;background:var(--bg3);border-radius:4px;font-size:11px;color:var(--text2);font-style:italic">"'+ie.agent_notes+'"</div>';
+      html += '</div>';
+    }
+
+    // Call notes from actions
+    var actions = d.actions || [];
+    var noteActions = actions.filter(function(act){
+      var type = (act.action_type||'').toLowerCase();
+      return type === 'note' || type === 'call_note' || type === 'agent_note' || type === 'manager note' || act.notes;
+    });
+    if (noteActions.length) {
+      html += '<div class="card-sm" style="margin-bottom:10px">';
+      html += '<div class="section-label" style="margin-bottom:6px">Call notes</div>';
+      noteActions.slice(0,5).forEach(function(act) {
+        var agName=''; try{ var ad=JSON.parse(act.action_data||'{}'); agName=ad.agent_name||''; }catch(e){}
+        agName = agName || act.agent_name || act.agent_email || '';
+        // Note text can be in notes, note_text, or inside action_data JSON
+    var noteText = act.notes || act.note_text || '';
+    if(!noteText){try{var ad2=JSON.parse(act.action_data||'{}');noteText=ad2.note||ad2.note_text||'';}catch(e){}}
+        if(!noteText) { try{ var ad2=JSON.parse(act.action_data||'{}'); noteText=ad2.notes||ad2.note||''; }catch(e){} }
+        if(!noteText) return;
+        html += '<div style="padding:6px 0;border-bottom:1px solid var(--border)">';
+        html += '<div style="display:flex;justify-content:space-between;margin-bottom:2px">';
+        html += '<span style="font-size:10px;font-weight:600;color:var(--text2)">'+(agName||'Agent')+'</span>';
+        html += '<span style="font-size:10px;color:var(--text3)">'+fmtD(act.created_at)+'</span>';
+        html += '</div>';
+        html += '<div style="font-size:11px;color:var(--text)">'+noteText+'</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    // All activity
+    if (actions.length) {
+      html += '<div class="card-sm" style="margin-bottom:10px">';
+      html += '<div class="section-label" style="margin-bottom:6px">All activity</div>';
+      actions.slice(0,15).forEach(function(act) {
+        var agName=''; try{ var ad=JSON.parse(act.action_data||'{}'); agName=ad.agent_name||''; }catch(e){}
+        agName = agName || act.agent_name || act.agent_email || '—';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">';
+        html += '<div><div style="font-size:11px;font-weight:500;color:var(--text)">'+act.action_type+'</div>';
+        html += '<div style="font-size:10px;color:var(--text3)">'+agName+'</div></div>';
+        html += '<div style="font-size:10px;color:var(--text3);text-align:right">'+fmtD(act.created_at)+'</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Dummy call transcript
+    html += '<div class="card-sm" style="margin-bottom:10px">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+    html += '<div class="section-label">Call recording</div>';
+    html += '<span class="badge badge-amber">TCN integration pending</span>';
+    html += '</div>';
+    html += '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;font-size:11px;color:var(--text2)">';
+    html += '<div style="font-weight:600;color:var(--text);margin-bottom:6px">Sample call transcript</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px">';
+    var transcript = [
+      {role:'Agent',text:'Good morning, could I speak with '+a.first_name+' '+a.last_name+' please?'},
+      {role:'Customer',text:'Speaking.'},
+      {role:'Agent',text:'Good morning, my name is [Agent] calling from Zinc on behalf of [Client]. Could I just confirm your date of birth and postcode for security?'},
+      {role:'Customer',text:'Yes, confirmed.'},
+      {role:'Agent',text:'Thank you for confirming. I am calling today regarding your account with a balance of '+fmtCcy(a.balance)+'. I wanted to discuss how we can help get this resolved. Are you able to make a payment today or shall we look at a payment arrangement?'},
+    ];
+    transcript.forEach(function(line){
+      html += '<div style="display:flex;gap:6px"><span style="font-weight:600;color:'+(line.role==='Agent'?'var(--accent)':'var(--text3)')+';white-space:nowrap;font-size:10px;min-width:60px">'+line.role+':</span><span>'+line.text+'</span></div>';
+    });
+    html += '</div>';
+    html += '<div style="margin-top:8px;font-size:10px;color:var(--text3);font-style:italic">Full call recording will be available once TCN dialler integration is complete</div>';
+    html += '</div></div>';
+
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state">Failed to load account</div>';
+    console.error(e);
+  }
+}
+
+async function loadAgents() {
+  var el = document.getElementById('agents-list');
+  el.innerHTML='<div class="empty-state">Loading agents...</div>';
+  try {
+    // Load from team list
+    if (!_myTeam.length) {
+      var td2 = await fetch(API+'/api/teams/'+encodeURIComponent(managerEmail)).then(function(r){return r.json();});
+      _myTeam = td2.team || [];
+    }
+    if (!_myTeam.length) {
+      el.innerHTML='<div class="empty-state" style="padding:30px"><div style="font-size:13px;color:var(--text);margin-bottom:8px">No team members added yet</div><div style="font-size:12px;color:var(--text3);margin-bottom:12px">Add agents to your team to see their overview here</div><button class="btn btn-purple btn-sm" onclick="setSection(&quot;team&quot;)">Go to My Team</button></div>';
+      return;
+    }
+    var policies = [], courses = [];
+    try {
+      var pd = await fetch(API+'/api/policies').then(function(r){return r.json();}); policies = pd.policies||[];
+      var cd = await fetch(API+'/api/training/courses').then(function(r){return r.json();}); courses = cd.courses||[];
+    } catch(e){}
+
+    var html='';
+    for (var i=0; i<_myTeam.length; i++) {
+      var member = _myTeam[i];
+      var policies_read=0, policies_total=policies.length, courses_passed=0, courses_total=courses.length, qa_avg=null;
+      try {
+        var ap = await fetch(API+'/api/policies/agent/'+encodeURIComponent(member.agent_email)).then(function(r){return r.json();});
+        var agPol = ap.policies||[];
+        policies_read = agPol.filter(function(p){return p.acknowledged;}).length;
+        policies_total = agPol.length||policies.length;
+      } catch(e){}
+      try {
+        var at = await fetch(API+'/api/training/courses/agent/'+encodeURIComponent(member.agent_email)).then(function(r){return r.json();});
+        var agCrs = at.courses||[];
+        courses_passed = agCrs.filter(function(c){return c.passed;}).length;
+        courses_total = agCrs.length||courses.length;
+      } catch(e){}
+      try {
+        var aq = await fetch(API+'/api/qa/agent/'+encodeURIComponent(member.agent_email)).then(function(r){return r.json();});
+        if(aq.summary&&aq.summary.avg_score) qa_avg=Math.round(aq.summary.avg_score);
+      } catch(e){}
+      var pct_p = policies_total ? Math.round((policies_read/policies_total)*100) : 0;
+      var pct_t = courses_total ? Math.round((courses_passed/courses_total)*100) : 0;
+      var name = member.agent_name || member.agent_email.split('@')[0];
+      var initials = name.split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
+      var safeEmail = member.agent_email.replace(/'/g,"\'");
+      var safeName = name.replace(/'/g,"\'");
+      html+='<div class="agent-card" onclick="viewAgentDetail(\'' + safeEmail + '\',\'' + safeName + '\')">'; 
+      html+='<div class="agent-avatar">'+initials+'</div>';
+      html+='<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">'+name+'</div><div style="font-size:11px;color:var(--text3)">'+member.agent_email+'</div></div>';
+      html+='<div style="display:flex;gap:20px;align-items:center">';
+      html+='<div style="text-align:center"><div style="font-size:18px;font-weight:600;color:'+(pct_p>=80?'var(--green)':pct_p>=50?'var(--amber)':'var(--red)')+'">'+pct_p+'%</div><div style="font-size:10px;color:var(--text3)">Policies</div></div>';
+      html+='<div style="text-align:center"><div style="font-size:18px;font-weight:600;color:'+(pct_t>=80?'var(--green)':pct_t>=50?'var(--amber)':'var(--red)')+'">'+pct_t+'%</div><div style="font-size:10px;color:var(--text3)">Training</div></div>';
+      html+='<div style="text-align:center"><div style="font-size:18px;font-weight:600;color:'+(qa_avg===null?'var(--text3)':qa_avg>=80?'var(--green)':qa_avg>=60?'var(--amber)':'var(--red)')+'">'+( qa_avg!==null?qa_avg+'%':'—')+'</div><div style="font-size:10px;color:var(--text3)">QA score</div></div>';
+      html+='</div></div>';
+    }
+    el.innerHTML=html;
+  } catch(e) { el.innerHTML='<div class="empty-state">Failed to load agents</div>'; console.error(e); }
+}
+
+// ===== QA SEARCH =====
+async function qaSearch() {
+  var ref = document.getElementById('qa-ref').value.trim();
+  var name = document.getElementById('qa-name').value.trim();
+  var car = document.getElementById('qa-car').value.trim();
+  var err = document.getElementById('qa-search-err');
+  if(!ref && !name && !car) { err.textContent='Please enter a search term'; return; }
+  err.textContent='';
+  var q = ref || name || car;
+  var params = new URLSearchParams();
+  params.set('q', q);
+  try {
+    var d = await fetch(API+'/api/agent/search?'+params.toString()).then(function(r){return r.json();});
+    var accounts = d.accounts || [];
+    var el = document.getElementById('qa-search-results');
+    if(!accounts.length) { el.innerHTML='<div class="empty-state">No accounts found</div>'; el.style.display='block'; return; }
+    var html='';
+    accounts.forEach(function(a){
+      html+='<div class="card-sm" style="margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="startQAAuditFromAccount(\''+a.zinc_ref+'\',\''+a.first_name+' '+a.last_name+'\')">';
+      html+='<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+a.first_name+' '+a.last_name+'</div>';
+      html+='<div style="font-size:11px;color:var(--text3)">'+a.zinc_ref+' &middot; '+(a.client_name||'')+'</div></div>';
+      html+='<button class="btn btn-purple btn-sm">Start QA audit &rarr;</button></div>';
+    });
+    el.innerHTML=html;
+    el.style.display='block';
+  } catch(e) { err.textContent='Search failed'; }
+}
+
+async function startQAAuditFromAccount(zinc_ref, name) {
+  if(!document.getElementById('section-qa-audit').classList.contains('active')) {
+    setSection('qa-audit');
+  }
+  // Show split screen
+  document.getElementById('qa-search-state').style.display='none';
+  document.getElementById('qa-audit-state').style.display='block';
+  document.getElementById('qa-scorecard-area').style.display='block';
+  // Set name in panel header
+  var panelName = document.getElementById('qa-panel-name');
+  if(panelName) panelName.textContent = name + ' — ' + zinc_ref;
+  // Render scorecard on right
+  renderQAScorecard(zinc_ref, name);
+  // Load account on left
+  loadQAAccountPanel(zinc_ref);
+}
+
+async function loadQAAccountPanel(zinc_ref) {
+  var el = document.getElementById('qa-account-panel');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var d = await fetch(API+'/api/agent/account/'+zinc_ref).then(function(r){return r.json();});
+    var a = d.account;
+    if (!a) { el.innerHTML='<div class="empty-state">Account not found</div>'; return; }
+    var html = '';
+    // Account summary
+    html += '<div class="card-sm" style="margin-bottom:10px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">'+a.first_name+' '+a.last_name+'</div>';
+    html += '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">'+a.zinc_ref+' &middot; '+(a.client_name||'')+'</div>';
+    if(a.vulnerability_flag) html += '<span class="badge badge-red" style="margin-bottom:8px">Vulnerable</span><br>';
+    var rows = [
+      ['Outstanding', fmtCcy(a.balance)],
+      ['Original', fmtCcy(a.original_balance)],
+      ['Plan', a.plan_amount ? '£'+a.plan_amount+'/'+( a.plan_frequency||'month') : 'None'],
+      ['Next payment', fmtD(a.next_payment_date)],
+      ['Last payment', fmtD(a.last_payment_date)+(a.last_payment_amt?' ('+fmtCcy(a.last_payment_amt)+')':'')],
+      ['Status', a.account_status||'—'],
+      ['Diary', fmtD(a.diary_date)],
+      ['Product', a.product_type||'—'],
+    ];
+    html += '<table style="width:100%;font-size:11px"><tbody>';
+    rows.forEach(function(r){
+      html += '<tr><td style="padding:3px 0;color:var(--text3);width:45%">'+r[0]+'</td><td style="padding:3px 0;font-weight:500;color:var(--text)">'+r[1]+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // I&E if available
+    if (d.ie && d.ie.length) {
+      var ie = d.ie[0];
+      html += '<div class="card-sm" style="margin-bottom:10px">';
+      html += '<div class="section-label" style="margin-bottom:8px">Income & Expenditure</div>';
+      html += '<table style="width:100%;font-size:11px"><tbody>';
+      var ieRows = [
+        ['Employment income', fmtCcy(ie.employment_income)],
+        ['Benefits', fmtCcy(ie.benefits)],
+        ['Pension', fmtCcy(ie.pension)],
+        ['Other income', fmtCcy(ie.other_income)],
+        ['Total income', fmtCcy(ie.total_income)],
+        ['—','—'],
+        ['Mortgage/Rent', fmtCcy(ie.mortgage_rent)],
+        ['Council tax', fmtCcy(ie.council_tax)],
+        ['Gas/Electric', fmtCcy(ie.gas_electric)],
+        ['Water', fmtCcy(ie.water)],
+        ['Food', fmtCcy(ie.food)],
+        ['Transport', fmtCcy(ie.transport)],
+        ['Childcare', fmtCcy(ie.childcare)],
+        ['Insurance', fmtCcy(ie.insurance)],
+        ['Other expenses', fmtCcy(ie.other_expenses)],
+        ['Total expenses', fmtCcy(ie.total_expenses)],
+        ['Surplus', fmtCcy(ie.surplus)],
+      ];
+      ieRows.forEach(function(r){
+        if(r[0]==='—') { html += '<tr><td colspan="2" style="padding:3px 0;border-top:1px solid var(--border)"></td></tr>'; return; }
+        var isTotal = r[0].startsWith('Total') || r[0]==='Surplus';
+        var col = r[0]==='Surplus' ? (parseFloat((ie.surplus||0))>=0?'var(--green)':'var(--red)') : (isTotal?'var(--text)':'var(--text2)');
+        html += '<tr><td style="padding:3px 0;color:var(--text3)">'+(isTotal?'<strong>':'')+r[0]+(isTotal?'</strong>':'')+'</td><td style="padding:3px 0;font-weight:'+(isTotal?'700':'400')+';color:'+col+'">'+r[1]+'</td></tr>';
+      });
+      html += '</tbody></table>';
+      if(ie.agent_notes) html += '<div style="margin-top:8px;padding:6px 8px;background:var(--bg3);border-radius:4px;font-size:11px;color:var(--text2)">'+ie.agent_notes+'</div>';
+      html += '</div>';
+    }
+
+    // Recent activity
+    var actions = d.actions || [];
+    if (actions.length) {
+      html += '<div class="card-sm">';
+      html += '<div class="section-label" style="margin-bottom:8px">Recent activity</div>';
+      actions.slice(0,8).forEach(function(act) {
+        var agName='—'; try{ var ad=JSON.parse(act.action_data||'{}'); agName=ad.agent_name||act.agent_email||'—'; }catch(e){}
+        html += '<div style="padding:6px 0;border-bottom:1px solid var(--border)">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+        html += '<span style="font-size:11px;font-weight:500;color:var(--text)">'+act.action_type+'</span>';
+        html += '<span style="font-size:10px;color:var(--text3)">'+fmtD(act.created_at)+'</span>';
+        html += '</div>';
+        html += '<div style="font-size:10px;color:var(--text3)">'+agName+'</div>';
+        if(act.notes) html += '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+act.notes.substring(0,80)+'</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state">Failed to load account</div>';
+    console.error(e);
+  }
+}
+
+function renderQAScorecard(zinc_ref, name) {
+  var el = document.getElementById('qa-scorecard-area');
+
+  var CALL_SECTIONS = [
+    { id: 'data_intro', title: 'Data & Introduction', items: [
+      { key: 'idv', label: 'ID & Verification', deductions: ['Pass','Fail (100%)'], note: 'Must verify name, address, postcode and DOB. Any info divulged before ID verified = 100% deduction.' },
+      { key: 'info_sec', label: 'Info Sec', deductions: ['Pass','Fail (15%)'], note: 'Check if person is best placed to deal with call. Establish name and position.' },
+      { key: 'data_integrity', label: 'Data Integrity', deductions: ['Pass','Fail (3%)','Fail (15%)'], note: 'Actively seek alternate contact details and confirm best contact.' },
+      { key: 'call_intro', label: 'Call Introduction', deductions: ['Pass','Fail (3%)','Fail (15%)'], note: 'Company name, CAM name, then after ID&V — client and balance.' },
+      { key: 'status', label: 'Status of Account', deductions: ['Pass','Fail (3%)'], note: 'Make customer aware of reason for the call.' },
+      { key: 'calls_recorded', label: 'Calls Recorded', deductions: ['Pass','Fail (40%)'], note: 'Advise calls recorded for quality and training purposes.' },
+    ]},
+    { id: 'cust_understanding', title: 'Customer Understanding', items: [
+      { key: 'vulnerable', label: 'Vulnerable / TEXAS', deductions: ['Pass','Fail (3%)','Fail (40%)'], note: 'Respond to vulnerability triggers using TEXAS model. Gain explicit consent to note sensitive info.' },
+      { key: 'no_pressure', label: 'No Undue Pressure Applied', deductions: ['Pass','Fail (40%)'], note: 'Customer made aware of all options. No misleading consequences used.' },
+      { key: 'signpost_fma', label: 'Signpost FMA', deductions: ['Pass','Fail (3%)','Fail (40%)'], note: 'Actively signpost to free money advice where triggers of financial hardship present.' },
+      { key: 'complaint', label: 'Complaint Addressed', deductions: ['Pass','Fail (40%)'], note: 'Recognise, acknowledge, question, empathise, resolve, confirm satisfaction.' },
+      { key: 'eod', label: 'EOD Addressed', deductions: ['Pass','Fail (15%)'], note: 'Expression of Dissatisfaction identified and addressed appropriately.' },
+    ]},
+    { id: 'financial', title: 'Financial Understanding', items: [
+      { key: 'affordability', label: 'Affordability / I&E', deductions: ['Pass','Fail (3%)','Fail (40%)'], note: 'Offer I&E, use open questions, use SFS, confirm affordability, establish source of funds.' },
+      { key: 'no_advice', label: 'No Advice Given', deductions: ['Pass','Fail (40%)'], note: 'No regulated advice given on managing finances, prioritising creditors or CRA impact.' },
+      { key: 'priority_bills', label: 'Priority Bills & Essential Living Expenses', deductions: ['Pass','Fail (3%)','Fail (40%)'], note: 'Ask if up to date with priority bills and essential living expenses before taking payment.' },
+      { key: 'suitable_plan', label: 'Suitable Plan (Method & Date)', deductions: ['Pass','Fail (3%)','Fail (40%)'], note: 'Plan is affordable. All payment methods discussed. No pressure to use specific method.' },
+      { key: 'settlement', label: 'Settlement (CRA Impact)', deductions: ['Pass','Fail (40%)'], note: 'Settlement meets client requirements. CRA impact disclosed prior to confirmation.' },
+      { key: 'cpa_dd', label: 'CPA / DD Script', deductions: ['Pass','Fail (40%)'], note: 'CPA statement read in full. DD guarantee advised and offered to be read.' },
+      { key: 'pci_dss', label: 'PCI DSS & Call Restarted', deductions: ['Pass','Fail (15%)','Fail (40%)'], note: 'Call recording stopped and resumed during payment. Card ownership confirmed.' },
+      { key: 'consequences', label: 'Consequences', deductions: ['Pass','Fail (3%)','Fail (40%)'], note: 'Relevant and appropriate consequence given that is clear and easy to understand.' },
+      { key: 'summary', label: 'Summary / Hold Process', deductions: ['Pass','Fail (3%)','Fail (10%)'], note: 'Invite questions, review key call points, provide timescales, confirm account status.' },
+    ]},
+    { id: 'call_end', title: 'Call Structure & Soft Skills', items: [
+      { key: 'call_structure', label: 'Call Structure', deductions: ['Pass','Fail (3%)'], note: 'Logical call structure, not confusing, content succinct.' },
+      { key: 'communication', label: 'Effective Communication', deductions: ['Pass','Fail (3%)','Fail (40%)'], note: 'Product knowledge, tailored approach, competent dispute handling.' },
+      { key: 'behaviours', label: 'Behaviours', deductions: ['Pass','Fail (3%)','Fail (40%)'], note: 'Professional, polite, suitable pace and tone, no jargon.' },
+      { key: 'questioning', label: 'Questioning & Listening', deductions: ['Pass','Fail (3%)','Fail (40%)'], note: 'Open and closed questions used appropriately. Root cause established.' },
+      { key: 'rapport', label: 'Rapport', deductions: ['Pass','Fail (3%)','Fail (10%)','Fail (15%)'], note: 'Rapport evident where required, appropriate empathy shown.' },
+      { key: 'tcf_call', label: 'TCF / Customer Outcome (Call)', deductions: ['Pass','Fail (100%)'], note: 'Any detriment to customer not captured elsewhere results in fail here.' },
+    ]},
+  ];
+
+  var ACCOUNT_ITEMS = [
+    { key: 'acc_idv', label: 'ID&V Noted' },
+    { key: 'acc_reason', label: 'Reason for Non-Payment Noted' },
+    { key: 'acc_arrangement', label: 'Arrangement Noted (Amount & Date)' },
+    { key: 'acc_aml', label: 'AML Checks Noted' },
+    { key: 'acc_summary', label: 'Main Points of Call Summarised' },
+    { key: 'acc_sensitive', label: 'Sensitive Info Updated Correctly' },
+    { key: 'acc_updates', label: 'Account Updates Completed Correctly' },
+    { key: 'acc_diary', label: 'Diary Date Set Correctly' },
+    { key: 'acc_ie', label: 'I&E Completed / Affordability Recorded' },
+    { key: 'acc_status', label: 'Relevant Status Changed on Account' },
+    { key: 'acc_gaps', label: 'Avoidable Collection Activity Gaps' },
+    { key: 'acc_complaint', label: 'Complaint / EOD Recorded Correctly' },
+    { key: 'acc_promises', label: 'Promises Kept / Email or Letter Sent' },
+    { key: 'acc_tcf', label: 'TCF / Customer Outcome (Account)' },
+  ];
+
+  window._qaScores = {};
+  window._qaZincRef = zinc_ref;
+  window._qaName = name;
+  window._qaCallSections = QA_CALL_SECTIONS;
+  window._qaAccountItems = QA_ACCOUNT_ITEMS;
+
+  var html = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">';
+  html += '<button class="btn btn-secondary btn-sm" onclick="closeQAScorecard()">&larr; Back</button>';
+  html += '<div><div style="font-size:14px;font-weight:600;color:var(--text)">QA Audit — '+name+'</div><div style="font-size:11px;color:var(--text3)">Ref: '+zinc_ref+'</div></div>';
+  html += '</div>';
+
+  // Call metadata
+  html += '<div class="card" style="margin-bottom:12px"><div class="section-label" style="margin-bottom:10px">Call Information</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
+  html += '<div class="form-group" style="margin-bottom:0"><label class="form-label">Agent (CAM)</label><input class="form-input" id="qa-agent-name" placeholder="Type name to search..." oninput="searchCAMAgent(this.value)" autocomplete="off"/><input type="hidden" id="qa-agent-email"/><div id="qa-cam-results" style="position:absolute;z-index:1000;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);width:220px;display:none;box-shadow:var(--shadow)"></div></div>';
+  html += '<div class="form-group" style="margin-bottom:0"><label class="form-label">Auditor</label><input class="form-input" id="qa-auditor-name" value="'+managerName+'" readonly style="background:var(--bg3)"/></div>';
+  html += '<div class="form-group" style="margin-bottom:0"><label class="form-label">Call date</label><input type="date" class="form-input" id="qa-call-date" value="'+new Date().toISOString().split('T')[0]+'"/></div>';
+  html += '<div class="form-group" style="margin-bottom:0"><label class="form-label">Direction</label><select class="form-input" id="qa-direction"><option>Outbound</option><option>Inbound</option></select></div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">';
+  html += '<div class="form-group" style="margin-bottom:0"><label class="form-label">Team</label><select class="form-input" id="qa-team"><option>Debt Management</option><option>E Solutions</option><option>mobilize</option><option>Octopus Energy</option><option>OVO Energy</option><option>Royal Bank of Scotland</option><option>Telecoms</option><option>Utilities</option><option>Zinc OVO</option></select></div>';
+  html += '<div class="form-group" style="margin-bottom:0"><label class="form-label">Client</label><input class="form-input" id="qa-client" placeholder="e.g. Demo Bank PLC"/></div>';
+  html += '<div class="form-group" style="margin-bottom:0"><label class="form-label">Communication type</label><select class="form-input" id="qa-comm-type"><option>Call</option><option>Email</option><option>Webchat</option><option>Text</option></select></div>';
+  html += '</div></div>';
+
+  // Call scorecard sections
+  CALL_SECTIONS.forEach(function(sec) {
+    html += '<div class="scorecard-section" style="margin-bottom:10px">';
+    html += '<div class="scorecard-section-hdr"><span>'+sec.title+'</span><span id="sec-pct-'+sec.id+'" style="font-size:11px;color:var(--text3)">Not scored</span></div>';
+    sec.items.forEach(function(item) {
+      html += '<div class="scorecard-row" style="flex-direction:column;align-items:flex-start;gap:6px;padding:10px 14px">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;width:100%">';
+      html += '<div style="font-size:12px;font-weight:500;color:var(--text)">' + item.label + '</div>';
+      html += '<div style="display:flex;gap:4px">';
+      item.deductions.forEach(function(d, di) {
+        var btnClass = d === 'Pass' ? 'green' : 'red';
+        var shortLabel = d === 'Pass' ? 'Pass' : d;
+        html += '<button class="score-btn" id="sb-'+item.key+'-'+di+'" style="width:auto;padding:0 8px;font-size:10px" onclick="setScoreV2(\'' + item.key + '\','+di+',\'' + sec.id + '\')">'+shortLabel+'</button>';
+      });
+      html += '<button class="score-btn" id="sb-'+item.key+'-na" style="width:auto;padding:0 8px;font-size:10px" onclick="setScoreNA(\'' + item.key + '\',\'' + sec.id + '\')">N/A</button>';
+      html += '</div></div>';
+      html += '<div style="font-size:11px;color:var(--text3);font-style:italic">'+item.note+'</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  // Account scorecard
+  html += '<div class="scorecard-section" style="margin-bottom:10px">';
+  html += '<div class="scorecard-section-hdr"><span>Account Scorecard</span><span id="sec-pct-account" style="font-size:11px;color:var(--text3)">Not scored</span></div>';
+  ACCOUNT_ITEMS.forEach(function(item) {
+    html += '<div class="scorecard-row"><div class="scorecard-q">'+item.label+'</div>';
+    html += '<div class="scorecard-btns">';
+    html += '<button class="score-btn" id="sb-'+item.key+'-pass" style="width:auto;padding:0 8px;font-size:10px" onclick="setAccScore(\'' + item.key + '\',1)">Pass (1)</button>';
+    html += '<button class="score-btn" id="sb-'+item.key+'-fail" style="width:auto;padding:0 8px;font-size:10px" onclick="setAccScore(\'' + item.key + '\',0)">Fail (0)</button>';
+    html += '<button class="score-btn" id="sb-'+item.key+'-na" style="width:auto;padding:0 8px;font-size:10px" onclick="setAccScore(\'' + item.key + '\',\'na\')">N/A</button>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+
+  // Outcome & Remediation
+  html += '<div class="card" style="margin-bottom:12px"><div class="section-label" style="margin-bottom:12px">Outcome & Remediation</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+  // Outcome rating
+  html += '<div><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px">OUTCOME RATING</div>';
+  ['Good','Fair with Learnings','Unfair — Potential Detriment','Unfair — Actual Detriment'].forEach(function(r) {
+    var safeR = r.replace(/'/g,"\'");
+    var col = r==='Good'?'var(--green)':r==='Fair with Learnings'?'var(--amber)':'var(--red)';
+    html += '<div onclick="setOutcomeRating(\'' + safeR + '\')" id="or-'+r.replace(/[^a-z]/gi,'_')+'" style="cursor:pointer;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:6px;font-size:12px;display:flex;align-items:center;gap:8px">';
+    html += '<div style="width:10px;height:10px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div>'+r+'</div></div>';
+  });
+  html += '</div>';
+  // Process outcome
+  html += '<div><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px">PROCESS OUTCOME</div>';
+  ['Accessibility','Decision','Timeliness & Expectation','Follow through','Communication'].forEach(function(po) {
+    var safeKey = 'po_'+po.replace(/[^a-z]/gi,'_').toLowerCase();
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">';
+    html += '<div style="font-size:12px;color:var(--text)">'+po+'</div>';
+    html += '<div style="display:flex;gap:4px">';
+    ['Yes','No','N/A'].forEach(function(v) {
+      html += '<button class="score-btn" id="'+safeKey+'-'+v+'" style="width:auto;padding:0 8px;font-size:10px" onclick="setProcessOutcome(\'' + safeKey + '\',\'' + v + '\')">'+v+'</button>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div></div>';
+
+  // Remediation
+  html += '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><input type="checkbox" id="qa-remediation-req" onchange="toggleRemediation()"/><label for="qa-remediation-req" style="font-size:12px;font-weight:600;color:var(--text)">Remedial action required</label></div>';
+  html += '<div id="qa-remediation-detail" style="display:none">';
+  html += '<div class="form-group"><label class="form-label">Reason for remediation</label><input class="form-input" id="qa-remediation-reason" placeholder="Describe the remedial action required"/></div>';
+  html += '</div></div>';
+
+  html += '<div class="form-group" style="margin-top:12px"><label class="form-label">Call comments and coaching notes</label>';
+  html += '<textarea class="form-input" id="qa-comments" rows="4" placeholder="Overall feedback, coaching points, positive observations..."></textarea></div>';
+
+  html += '</div>';
+
+  // Score summary bar
+  html += '<div class="card" style="margin-bottom:16px;position:sticky;bottom:0;z-index:10">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between">';
+  html += '<div style="display:flex;gap:24px"><div style="text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Call score</div><div id="qa-call-score-display" style="font-size:20px;font-weight:700;color:var(--text)">—%</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Account score</div><div id="qa-acc-score-display" style="font-size:20px;font-weight:700;color:var(--text)">—/'+ACCOUNT_ITEMS.length+'</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Outcome</div><div id="qa-outcome-display" style="font-size:13px;font-weight:600;color:var(--text3)">Not set</div></div></div>';
+  html += '<button class="btn btn-purple" onclick="submitCurrentAudit()">Submit audit</button>';
+  html += '</div></div>';
+
+  el.innerHTML = html;
+}
+
+function closeQAScorecard() {
+  document.getElementById('qa-audit-state').style.display='none';
+  document.getElementById('qa-search-state').style.display='block';
+  document.getElementById('qa-search-results').style.display='none';
+  document.getElementById('qa-scorecard-area').innerHTML='';
+  document.getElementById('qa-account-panel').innerHTML='';
+}
+
+function setScoreV2(key, deductionIdx, sectionId) {
+  if (!window._qaScores) window._qaScores = {};
+  window._qaScores[key] = deductionIdx; // 0 = pass, 1+ = fail levels
+  // Update button styles
+  var section = window._qaCallSections.find(function(s){ return s.id === sectionId; });
+  if (!section) return;
+  var item = section.items.find(function(i){ return i.key === key; });
+  if (!item) return;
+  item.deductions.forEach(function(d, di) {
+    var btn = document.getElementById('sb-'+key+'-'+di);
+    if (btn) { btn.classList.remove('pass','fail'); btn.style.background=''; btn.style.color=''; }
+  });
+  var naBtn = document.getElementById('sb-'+key+'-na');
+  if (naBtn) { naBtn.classList.remove('na'); naBtn.style.background=''; }
+  var activeBtn = document.getElementById('sb-'+key+'-'+deductionIdx);
+  if (activeBtn) {
+    if (deductionIdx === 0) { activeBtn.style.background='var(--green-bg)'; activeBtn.style.color='var(--green)'; activeBtn.style.borderColor='var(--green-mid)'; }
+    else { activeBtn.style.background='var(--red-bg)'; activeBtn.style.color='var(--red)'; activeBtn.style.borderColor='rgba(207,34,46,.25)'; }
+  }
+  updateCallScore();
+}
+
+function setScoreNA(key, sectionId) {
+  if (!window._qaScores) window._qaScores = {};
+  window._qaScores[key] = 'na';
+  var section = window._qaCallSections.find(function(s){ return s.id === sectionId; });
+  if (!section) return;
+  var item = section.items.find(function(i){ return i.key === key; });
+  if (!item) return;
+  item.deductions.forEach(function(d, di) {
+    var btn = document.getElementById('sb-'+key+'-'+di);
+    if (btn) { btn.style.background=''; btn.style.color=''; btn.style.borderColor=''; }
+  });
+  var naBtn = document.getElementById('sb-'+key+'-na');
+  if (naBtn) { naBtn.style.background='var(--amber-bg)'; naBtn.style.color='var(--amber)'; naBtn.style.borderColor='rgba(154,103,0,.2)'; }
+  updateCallScore();
+}
+
+function setAccScore(key, val) {
+  if (!window._qaScores) window._qaScores = {};
+  window._qaScores['acc_'+key] = val;
+  // update buttons
+  ['pass','fail','na'].forEach(function(v) {
+    var btn = document.getElementById('sb-'+key+'-'+v);
+    if (btn) { btn.style.background=''; btn.style.color=''; btn.style.borderColor=''; }
+  });
+  var activeBtnId = val===1?'pass':val===0?'fail':'na';
+  var activeBtn = document.getElementById('sb-'+key+'-'+activeBtnId);
+  if (activeBtn) {
+    if (val===1) { activeBtn.style.background='var(--green-bg)'; activeBtn.style.color='var(--green)'; activeBtn.style.borderColor='var(--green-mid)'; }
+    else if (val===0) { activeBtn.style.background='var(--red-bg)'; activeBtn.style.color='var(--red)'; }
+    else { activeBtn.style.background='var(--amber-bg)'; activeBtn.style.color='var(--amber)'; }
+  }
+  updateAccScore();
+}
+
+function setProcessOutcome(key, val) {
+  if (!window._qaScores) window._qaScores = {};
+  window._qaScores[key] = val;
+  ['Yes','No','N/A'].forEach(function(v) {
+    var btn = document.getElementById(key+'-'+v);
+    if (btn) { btn.style.background=''; btn.style.color=''; btn.style.borderColor=''; }
+  });
+  var activeBtn = document.getElementById(key+'-'+val);
+  if (activeBtn) {
+    if (val==='Yes') { activeBtn.style.background='var(--green-bg)'; activeBtn.style.color='var(--green)'; activeBtn.style.borderColor='var(--green-mid)'; }
+    else if (val==='No') { activeBtn.style.background='var(--red-bg)'; activeBtn.style.color='var(--red)'; }
+    else { activeBtn.style.background='var(--amber-bg)'; activeBtn.style.color='var(--amber)'; }
+  }
+}
+
+var _outcomeRating = null;
+function setOutcomeRating(rating) {
+  _outcomeRating = rating;
+  ['Good','Fair with Learnings','Unfair — Potential Detriment','Unfair — Actual Detriment'].forEach(function(r) {
+    var el = document.getElementById('or-'+r.replace(/[^a-z]/gi,'_'));
+    if (el) { el.style.background=''; el.style.borderColor='var(--border)'; }
+  });
+  var activeEl = document.getElementById('or-'+rating.replace(/[^a-z]/gi,'_'));
+  if (activeEl) {
+    var col = rating==='Good'?'var(--green)':rating==='Fair with Learnings'?'var(--amber)':'var(--red)';
+    activeEl.style.background = rating==='Good'?'var(--green-bg)':rating==='Fair with Learnings'?'var(--amber-bg)':'var(--red-bg)';
+    activeEl.style.borderColor = col;
+  }
+  var disp = document.getElementById('qa-outcome-display');
+  if (disp) { disp.textContent = rating; disp.style.color = rating==='Good'?'var(--green)':rating==='Fair with Learnings'?'var(--amber)':'var(--red)'; }
+}
+
+function toggleRemediation() {
+  var cb = document.getElementById('qa-remediation-req');
+  var detail = document.getElementById('qa-remediation-detail');
+  if (detail) detail.style.display = cb && cb.checked ? 'block' : 'none';
+}
+
+function updateCallScore() {
+  var scores = window._qaScores || {};
+  var sections = window._qaCallSections || [];
+  var totalDeduction = 0;
+  var scored = false;
+  sections.forEach(function(sec) {
+    sec.items.forEach(function(item) {
+      var val = scores[item.key];
+      if (val === undefined || val === 'na') return;
+      scored = true;
+      if (val > 0) {
+        // Get deduction % from label e.g. "Fail (40%)" -> 40
+        var dLabel = item.deductions[val] || '';
+        var match = dLabel.match(/(\d+)%/);
+        if (match) totalDeduction += parseInt(match[1]);
+      }
+    });
+  });
+  var score = scored ? Math.max(0, 100 - totalDeduction) : null;
+  var disp = document.getElementById('qa-call-score-display');
+  if (disp) {
+    disp.textContent = score !== null ? score + '%' : '—%';
+    disp.style.color = score === null ? 'var(--text)' : score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--amber)' : 'var(--red)';
+  }
+}
+
+function updateAccScore() {
+  var scores = window._qaScores || {};
+  var items = window._qaAccountItems || [];
+  var passed = 0; var total = 0;
+  items.forEach(function(item) {
+    var val = scores['acc_'+item.key];
+    if (val === undefined || val === 'na') return;
+    total++;
+    if (val === 1) passed++;
+  });
+  var disp = document.getElementById('qa-acc-score-display');
+  if (disp) {
+    disp.textContent = total > 0 ? passed + '/' + total : '—/' + items.length;
+    disp.style.color = total === 0 ? 'var(--text)' : passed === total ? 'var(--green)' : passed >= total * 0.7 ? 'var(--amber)' : 'var(--red)';
+  }
+}
+
+function setScore(key, val, si, total) {
+  window._qaScores[key] = val;
+  ['pass','fail','na'].forEach(function(v){
+    var btn = document.getElementById(key+'-'+v);
+    if(btn) { btn.classList.remove('pass','fail','na'); }
+  });
+  var btn = document.getElementById(key+'-'+val);
+  if(btn) btn.classList.add(val);
+  // Update section score
+  var sec_keys = Object.keys(window._qaScores).filter(function(k){ return k.startsWith('s'+si+'q'); });
+  var pass_count = sec_keys.filter(function(k){ return window._qaScores[k]==='pass'; }).length;
+  var sec_el = document.getElementById('sec-score-'+si);
+  if(sec_el) sec_el.textContent = pass_count+'/'+total;
+  // Update total
+  var all = Object.keys(window._qaScores);
+  var total_scoreable = all.filter(function(k){ return window._qaScores[k]!=='na'; }).length;
+  var total_pass = all.filter(function(k){ return window._qaScores[k]==='pass'; }).length;
+  var pct = total_scoreable > 0 ? Math.round((total_pass/total_scoreable)*100) : 0;
+  var te = document.getElementById('qa-total-score');
+  if(te) { te.textContent='Score: '+pct+'%'; te.style.color=pct>=80?'var(--green)':pct>=60?'var(--amber)':'var(--red)'; }
+}
+
+var _camSearchTimeout = null;
+function searchCAMAgent(q) {
+  clearTimeout(_camSearchTimeout);
+  var el = document.getElementById('qa-cam-results');
+  if (!q || q.length < 2) { if(el) el.style.display='none'; return; }
+  _camSearchTimeout = setTimeout(async function() {
+    if (!el) return;
+    try {
+      var d = await fetch(API + '/api/azure/users?q=' + encodeURIComponent(q)).then(function(r){ return r.json(); });
+      var users = d.users || [];
+      if (!users.length) { el.style.display='none'; return; }
+      var html = '';
+      users.forEach(function(u) {
+        var safeName = u.name.replace(/"/g,'&quot;');
+        var safeEmail = u.email ? u.email.replace(/"/g,'&quot;') : '';
+        html += '<div style="padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border)" data-name="' + safeName + '" data-email="' + safeEmail + '" onclick="selectCAMAgentEl(this)">';
+        html += '<div style="font-weight:500;color:var(--text)">' + u.name + '</div>';
+        html += '<div style="color:var(--text3);font-size:11px">' + (u.email||'') + '</div></div>';
+      });
+      el.innerHTML = html;
+      el.style.display = 'block';
+    } catch(e) { el.style.display='none'; }
+  }, 400);
+}
+
+function selectCAMAgentEl(el) {
+  selectCAMAgent(el.getAttribute('data-name'), el.getAttribute('data-email'));
+}
+
+function selectCAMAgent(name, email) {
+  var nameEl = document.getElementById('qa-agent-name');
+  var emailEl = document.getElementById('qa-agent-email');
+  var resultsEl = document.getElementById('qa-cam-results');
+  if (nameEl) nameEl.value = name;
+  if (emailEl) emailEl.value = email;
+  if (resultsEl) resultsEl.style.display = 'none';
+}
+
+function submitCurrentAudit() {
+  submitQAAudit(window._qaZincRef, window._qaName);
+}
+
+async function submitQAAudit(zinc_ref, name) {
+  var agentName = document.getElementById('qa-agent-name') ? document.getElementById('qa-agent-name').value.trim() : '';
+  var agentEmail = document.getElementById('qa-agent-email') ? document.getElementById('qa-agent-email').value.trim() : '';
+  if(!agentName) { notify('Please enter the agent name'); return; }
+  // Calculate call score using deduction method (matches updateCallScore)
+  var callSections = window._qaCallSections || [];
+  var scores = window._qaScores || {};
+  var totalDeduction = 0;
+  var callScored = false;
+  callSections.forEach(function(sec) {
+    sec.items.forEach(function(item) {
+      var val = scores[item.key];
+      if (val === undefined || val === 'na') return;
+      callScored = true;
+      if (val > 0) {
+        var dLabel = item.deductions[val] || '';
+        var match = dLabel.match(/(\d+)%/);
+        if (match) totalDeduction += parseInt(match[1]);
+      }
+    });
+  });
+  var pct = callScored ? Math.max(0, 100 - totalDeduction) : 0;
+  // Account score
+  var accItems = window._qaAccountItems || [];
+  var accPass = 0; var accTotal = 0;
+  accItems.forEach(function(item) {
+    var val = scores['acc_'+item.key];
+    if (val === undefined || val === 'na') return;
+    accTotal++;
+    if (val === 1) accPass++;
+  });
+  var accPct = accTotal > 0 ? Math.round((accPass/accTotal)*100) : null;
+  var comments = document.getElementById('qa-comments') ? document.getElementById('qa-comments').value.trim() : '';
+  var remediation = document.getElementById('qa-remediation') ? document.getElementById('qa-remediation').checked : false;
+  try {
+    await fetch(API+'/api/qa/audits', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ zinc_ref, customer_name: name, agent_name: agentName, agent_email: agentEmail, auditor_email: managerEmail, auditor_name: managerName, score: pct, acc_score: accPct, outcome_rating: window._outcomeRating||null, scores: window._qaScores, comments, remediation_required: document.getElementById('qa-remediation-req')?document.getElementById('qa-remediation-req').checked:false, remediation_reason: document.getElementById('qa-remediation-reason')?document.getElementById('qa-remediation-reason').value:'', call_date: document.getElementById('qa-call-date').value, direction: document.getElementById('qa-direction')?document.getElementById('qa-direction').value:'', team: document.getElementById('qa-team')?document.getElementById('qa-team').value:'', client: document.getElementById('qa-client')?document.getElementById('qa-client').value:'' })
+    });
+    notify('QA audit submitted — Call: '+pct+'%'+(accPct!==null?' | Account: '+accPct+'%':''));
+    document.getElementById('qa-audit-state').style.display='none';
+    document.getElementById('qa-search-state').style.display='block';
+    document.getElementById('qa-scorecard-area').innerHTML='';
+    document.getElementById('qa-account-panel').innerHTML='';
+    window._qaScores={};
+  } catch(e) { notify('Failed to submit audit: '+e.message); }
+}
+
+// ===== QA RESULTS =====
+async function loadQAResults() {
+  var el = document.getElementById('qa-results-list');
+  el.innerHTML='<div class="empty-state">Loading results...</div>';
+  try {
+    var d = await fetch(API+'/api/qa/audits').then(function(r){return r.json();});
+    var audits = d.audits || [];
+    if(!audits.length) { el.innerHTML='<div class="empty-state">No audits submitted yet</div>'; return; }
+    var html='<table class="data-table"><thead><tr><th>Date</th><th>Agent</th><th>Account</th><th>Auditor</th><th>Score</th><th>Remediation</th><th></th></tr></thead><tbody>';
+    audits.forEach(function(a){
+      var scoreColor = a.score>=80?'var(--green)':a.score>=60?'var(--amber)':'var(--red)';
+      html+='<tr>';
+      html+='<td>'+fmtD(a.audit_date||a.created_at)+'</td>';
+      html+='<td style="font-weight:500">'+a.agent_name+'</td>';
+      html+='<td style="color:var(--text3)">'+a.customer_name+' ('+a.zinc_ref+')</td>';
+      html+='<td style="color:var(--text3)">'+a.auditor_name+'</td>';
+      html+='<td><span style="font-weight:700;color:'+scoreColor+'">'+a.score+'%</span></td>';
+      html+='<td>'+(a.remediation_required?'<span class="badge badge-red">Required</span>':'<span class="badge badge-green">None</span>')+'</td>';
+      html+='<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="viewAuditDetail(\''+a.id+'\')" style="margin-right:4px">View</button><button class="btn btn-secondary btn-sm" onclick="recalculateAudit(\''+a.id+'\')" title="Recalculate score">↻</button></td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+    el.innerHTML=html;
+  } catch(e) { el.innerHTML='<div class="empty-state">Failed to load QA results</div>'; }
+}
+
+function closeAuditDetail() { var m=document.getElementById("audit-detail-modal"); if(m) m.remove(); }
+
+async function viewAuditDetail(id) {
+  var existing = document.getElementById('audit-detail-modal');
+  if (existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'audit-detail-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = '<div style="background:var(--bg);border-radius:12px;width:800px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.3)">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">' +
+      '<div style="font-size:14px;font-weight:600;color:var(--text)">QA Audit Detail</div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-secondary btn-sm" onclick="printAuditDetail()">Print / Share</button>' +
+        '<button class="btn btn-secondary btn-sm" onclick="closeAuditDetail()">Close</button>' +
+      '</div>' +
+    '</div>' +
+    '<div id="audit-detail-body" style="overflow-y:auto;padding:20px;flex:1"><div class="empty-state">Loading...</div></div>' +
+  '</div>';
+  document.body.appendChild(modal);
+
+  try {
+    var d = await fetch(API+'/api/qa/audits/'+id).then(function(r){return r.json();});
+    var a = d.audit;
+    if (!a) { document.getElementById('audit-detail-body').innerHTML='<div class="empty-state">Audit not found</div>'; return; }
+    var scores = {};
+    try { scores = JSON.parse(a.scores||'{}'); } catch(e) {}
+    var scoreCol = a.score>=80?'var(--green)':a.score>=60?'var(--amber)':'var(--red)';
+
+    var html = '';
+    // Header
+    html += '<div style="display:grid;grid-template-columns:1fr auto;gap:16px;margin-bottom:20px;padding:16px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border)">';
+    html += '<div>';
+    html += '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">'+a.customer_name+' — '+a.zinc_ref+'</div>';
+    html += '<div style="display:flex;gap:16px;font-size:12px;color:var(--text3);flex-wrap:wrap">';
+    html += '<span><strong style="color:var(--text)">Agent:</strong> '+a.agent_name+(a.agent_email?' ('+a.agent_email+')':'')+'</span>';
+    html += '<span><strong style="color:var(--text)">Auditor:</strong> '+a.auditor_name+'</span>';
+    html += '<span><strong style="color:var(--text)">Call date:</strong> '+fmtD(a.call_date)+'</span>';
+    html += '<span><strong style="color:var(--text)">Submitted:</strong> '+fmtD(a.created_at)+'</span>';
+    if(a.outcome_rating) html += '<span><strong style="color:var(--text)">Outcome:</strong> '+a.outcome_rating+'</span>';
+    html += '</div></div>';
+    html += '<div style="text-align:center;padding:12px 20px;background:var(--bg);border-radius:var(--radius);border:2px solid '+scoreCol+'">';
+    html += '<div style="font-size:32px;font-weight:800;color:'+scoreCol+'">'+a.score+'%</div>';
+    html += '<div style="font-size:11px;color:var(--text3)">Call score</div>';
+    html += '</div></div>';
+
+    // Remediation banner
+    if (a.remediation_required) {
+      html += '<div style="background:var(--red-bg);border:1px solid rgba(207,34,46,.2);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">';
+      html += '<svg width="16" height="16" fill="none" stroke="var(--red)" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+      html += '<div><div style="font-size:12px;font-weight:600;color:var(--red)">Remedial action required</div>';
+      if(a.remediation_reason) html += '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+a.remediation_reason+'</div>';
+      html += '</div></div>';
+    }
+
+    // Call scorecard results
+    var CALL_SECTIONS = QA_CALL_SECTIONS;
+    if (CALL_SECTIONS) {
+      html += '<div style="margin-bottom:16px"><div class="section-label" style="margin-bottom:8px">Call scorecard</div>';
+      CALL_SECTIONS.forEach(function(sec) {
+        html += '<div style="margin-bottom:10px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">';
+        html += '<div style="padding:8px 12px;background:var(--bg3);font-size:11px;font-weight:600;color:var(--text)">'+sec.title+'</div>';
+        sec.items.forEach(function(item) {
+          var val = scores[item.key];
+          var resultLabel = '—'; var resultCol = 'var(--text3)'; var resultBg = '';
+          if (val === 'na') { resultLabel = 'N/A'; resultCol = 'var(--amber)'; }
+          else if (val === 0) { resultLabel = 'Pass'; resultCol = 'var(--green)'; resultBg = 'background:var(--green-bg)'; }
+          else if (val > 0) {
+            var dLabel = item.deductions[val]||'Fail';
+            resultLabel = dLabel; resultCol = 'var(--red)'; resultBg = 'background:var(--red-bg)';
+          }
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-top:1px solid var(--border);'+resultBg+'">';
+          html += '<div style="font-size:12px;color:var(--text)">'+item.label+'</div>';
+          html += '<span style="font-size:11px;font-weight:600;color:'+resultCol+'">'+resultLabel+'</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Account scorecard
+    var ACC_ITEMS = QA_ACCOUNT_ITEMS;
+    if (ACC_ITEMS) {
+      var accPass=0,accTotal=0;
+      ACC_ITEMS.forEach(function(item){ var v=scores['acc_'+item.key]; if(v!==undefined&&v!=='na'){accTotal++;if(v===1)accPass++;} });
+      html += '<div style="margin-bottom:16px"><div class="section-label" style="margin-bottom:8px">Account scorecard — '+accPass+'/'+accTotal+'</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+      ACC_ITEMS.forEach(function(item) {
+        var val = scores['acc_'+item.key];
+        var col = val===1?'var(--green)':val===0?'var(--red)':'var(--text3)';
+        var lbl = val===1?'Pass':val===0?'Fail':'N/A';
+        html += '<div style="display:flex;justify-content:space-between;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px">';
+        html += '<span style="color:var(--text)">'+item.label+'</span>';
+        html += '<span style="font-weight:600;color:'+col+'">'+lbl+'</span></div>';
+      });
+      html += '</div></div>';
+    }
+
+    // Comments
+    if (a.comments) {
+      html += '<div style="margin-bottom:16px"><div class="section-label" style="margin-bottom:8px">Coaching notes</div>';
+      html += '<div style="padding:12px;background:var(--bg3);border-radius:var(--radius);font-size:12px;color:var(--text);border-left:3px solid var(--accent)">'+a.comments+'</div></div>';
+    }
+
+    document.getElementById('audit-detail-body').innerHTML = html;
+    document.getElementById('audit-detail-body').setAttribute('data-audit-id', id);
+  } catch(e) {
+    document.getElementById('audit-detail-body').innerHTML = '<div class="empty-state">Failed to load audit</div>';
+    console.error(e);
+  }
+}
+
+function printAuditDetail() {
+  var body = document.getElementById('audit-detail-body');
+  if (!body) return;
+  var win = window.open('', '_blank');
+  win.document.write('<html><head><title>QA Audit</title><style>body{font-family:Arial,sans-serif;font-size:12px;color:#333;padding:20px}table{width:100%;border-collapse:collapse}.badge{padding:2px 6px;border-radius:10px;font-size:10px;font-weight:600}</style></head><body>');
+  win.document.write(body.innerHTML);
+  win.document.write('</body></html>');
+  win.document.close();
+  win.print();
+}
+function toggleExpand(id) {
+  var el = document.getElementById(id);
+  var chevron = document.getElementById(id+'-chevron');
+  if (!el) return;
+  var isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+function exportQAResults() { notify('CSV export coming soon'); }
+
+async function recalculateAudit(id) {
+  try {
+    var d = await fetch(API+'/api/qa/audits/'+id).then(function(r){return r.json();});
+    var a = d.audit;
+    if (!a) { notify('Audit not found'); return; }
+    var scores = {};
+    try { scores = JSON.parse(a.scores||'{}'); } catch(e) {}
+
+    // Recalculate using deduction method
+    var CALL_SECTIONS = QA_CALL_SECTIONS; 
+
+    var totalDeduction = 0;
+    var callScored = false;
+    CALL_SECTIONS.forEach(function(sec) {
+      sec.items.forEach(function(item) {
+        var val = scores[item.key];
+        if (val === undefined || val === 'na') return;
+        callScored = true;
+        if (val > 0) {
+          var dLabel = item.deductions[val] || '';
+          var match = dLabel.match(/(\d+)%/);
+          if (match) totalDeduction += parseInt(match[1]);
+        }
+      });
+    });
+    var newScore = callScored ? Math.max(0, 100 - totalDeduction) : 0;
+
+    // Save updated score
+    await fetch(API+'/api/qa/audits/'+id+'/score', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ score: newScore })
+    });
+
+    notify('Score recalculated: '+newScore+'%');
+    loadQAResults();
+  } catch(e) {
+    notify('Recalculate failed: '+e.message);
+  }
+}
+
+// ===== POLICIES (MANAGER VIEW) =====
+async function loadMgrPolicies() {
+  var el = document.getElementById('mgr-policies-list');
+  el.innerHTML='<div class="empty-state">Loading...</div>';
+  try {
+    // Load team
+    if (!_myTeam.length) {
+      var td = await fetch(API+'/api/teams/'+encodeURIComponent(managerEmail)).then(function(r){return r.json();});
+      _myTeam = td.team || [];
+    }
+    var d = await fetch(API+'/api/policies').then(function(r){return r.json();});
+    var policies = d.policies || [];
+    if(!policies.length) { el.innerHTML='<div class="empty-state">No active policies</div>'; return; }
+
+    var html = '';
+    for(var i=0;i<policies.length;i++){
+      var p = policies[i];
+      var acks = await fetch(API+'/api/policies/'+p.id+'/acknowledgements').then(function(r){return r.json();});
+      var ackedEmails = (acks.acknowledgements||[]).map(function(a){ return (a.agent_email||'').toLowerCase(); });
+      var ackedMap = {};
+      (acks.acknowledgements||[]).forEach(function(a){ ackedMap[(a.agent_email||'').toLowerCase()] = a; });
+      var due = p.due_date ? new Date(p.due_date) : null;
+      var overdue = due && due < new Date();
+      var totalAcked = ackedEmails.length;
+      var teamAcked = _myTeam.filter(function(m){ return ackedEmails.indexOf(m.agent_email.toLowerCase())>=0; }).length;
+      var allTeamDone = _myTeam.length > 0 && teamAcked === _myTeam.length;
+      var borderCol = overdue && !allTeamDone ? 'var(--red)' : allTeamDone ? 'var(--green)' : 'var(--amber)';
+
+      var policyId = 'policy-expand-'+i;
+      html += '<div style="border:1px solid var(--border);border-left:3px solid '+borderCol+';border-radius:var(--radius);overflow:hidden;margin-bottom:12px">';
+      // Clickable header
+      html += '<div style="padding:12px 14px;background:var(--bg2);display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleExpand(\'' + policyId + '\')">'; 
+      html += '<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+p.title+'</div>';
+      html += '<div style="font-size:11px;color:var(--text3);margin-top:2px">v'+p.version+' &middot; Due: '+(due?fmtD(due):'Not set')+(overdue?' <span style="color:var(--red);font-weight:600">OVERDUE</span>':'')+'</div></div>';
+      html += '<div style="display:flex;align-items:center;gap:12px">';
+      html += '<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:'+(allTeamDone?'var(--green)':overdue?'var(--red)':'var(--amber)')+'">'+teamAcked+'/'+_myTeam.length+'</div><div style="font-size:10px;color:var(--text3)">team read</div></div>';
+      html += '<svg width="16" height="16" fill="none" stroke="var(--text3)" stroke-width="2" viewBox="0 0 24 24" id="'+policyId+'-chevron"><polyline points="6,9 12,15 18,9"/></svg>';
+      html += '</div></div>';
+
+      // Expandable agent table (hidden by default)
+      html += '<div id="'+policyId+'" style="display:none">';
+      if (_myTeam.length) {
+        html += '<table class="data-table" style="margin:0"><thead><tr><th>Agent</th><th>Status</th><th>Acknowledged</th><th></th></tr></thead><tbody>';
+        _myTeam.forEach(function(member) {
+          var email = member.agent_email.toLowerCase();
+          var ack = ackedMap[email];
+          var name = member.agent_name || member.agent_email.split('@')[0];
+          var initials = name.split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
+          var needsReminder = !ack;
+          var subject = encodeURIComponent('Policy reminder: '+p.title);
+          var body = encodeURIComponent('Dear ' + name + ', Policy reminder: ' + p.title + ' - due ' + (due?fmtD(due):'soon') + '. Please log into FOCUS and acknowledge. Kind regards, ' + managerName);
+          var mailto = 'mailto:'+member.agent_email+'?subject='+subject+'&body='+body;
+          html += '<tr>';
+          html += '<td><div style="display:flex;align-items:center;gap:8px"><div class="agent-avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">'+initials+'</div><div style="font-size:12px;font-weight:500;color:var(--text)">'+name+'</div></div></td>';
+          if (ack) {
+            html += '<td><span class="badge badge-green">Read</span></td>';
+            html += '<td style="font-size:11px;color:var(--text3)">'+fmtD(ack.acknowledged_at)+'</td>';
+            html += '<td></td>';
+          } else {
+            html += '<td><span class="badge badge-red">'+(overdue?'Overdue':'Unread')+'</span></td>';
+            html += '<td style="font-size:11px;color:var(--text3)">—</td>';
+            html += '<td><a href="'+mailto+'" class="btn btn-secondary btn-sm" style="text-decoration:none;font-size:10px">✉ Send reminder</a></td>';
+          }
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+      html += '</div></div>';
+    }
+    el.innerHTML = html || '<div class="empty-state">No policies found</div>';
+  } catch(e) { el.innerHTML='<div class="empty-state">Failed to load: '+e.message+'</div>'; console.error(e); }
+}
+
+// ===== TRAINING (MANAGER VIEW) =====
+async function loadMgrTraining() {
+  var el = document.getElementById('mgr-training-list');
+  el.innerHTML='<div class="empty-state">Loading...</div>';
+  try {
+    // Load team
+    if (!_myTeam.length) {
+      var td = await fetch(API+'/api/teams/'+encodeURIComponent(managerEmail)).then(function(r){return r.json();});
+      _myTeam = td.team || [];
+    }
+    var d = await fetch(API+'/api/training/courses').then(function(r){return r.json();});
+    var courses = d.courses || [];
+    if(!courses.length) { el.innerHTML='<div class="empty-state">No active courses</div>'; return; }
+
+    var html = '';
+    for(var i=0;i<courses.length;i++){
+      var c = courses[i];
+      var res = await fetch(API+'/api/training/courses/'+c.id+'/results').then(function(r){return r.json();});
+      var results = res.results || [];
+      // Build result map by email
+      var resultMap = {};
+      results.forEach(function(r){ resultMap[(r.agent_email||'').toLowerCase()] = r; });
+      var due = c.due_date ? new Date(c.due_date) : null;
+      var overdue = due && due < new Date();
+      var teamPassed = _myTeam.filter(function(m){ var r=resultMap[m.agent_email.toLowerCase()]; return r && r.passed; }).length;
+      var allTeamDone = _myTeam.length > 0 && teamPassed === _myTeam.length;
+      var borderCol = overdue && !allTeamDone ? 'var(--red)' : allTeamDone ? 'var(--green)' : 'var(--amber)';
+      var avgScore = results.length ? Math.round(results.reduce(function(s,r){return s+r.best_score;},0)/results.length) : null;
+
+      var courseId = 'course-expand-'+i;
+      html += '<div style="border:1px solid var(--border);border-left:3px solid '+borderCol+';border-radius:var(--radius);overflow:hidden;margin-bottom:12px">';
+      // Clickable header
+      html += '<div style="padding:12px 14px;background:var(--bg2);display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleExpand(\'' + courseId + '\')">'; 
+      html += '<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+c.title+'</div>';
+      html += '<div style="font-size:11px;color:var(--text3);margin-top:2px">Pass mark: '+c.pass_mark+'% &middot; Due: '+(due?fmtD(due):'Not set')+(overdue?' <span style="color:var(--red);font-weight:600">OVERDUE</span>':'')+(avgScore!==null?' &middot; Avg score: '+avgScore+'%':'')+'</div></div>';
+      html += '<div style="display:flex;align-items:center;gap:12px">';
+      html += '<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:'+(allTeamDone?'var(--green)':overdue?'var(--red)':'var(--amber)')+'">'+teamPassed+'/'+_myTeam.length+'</div><div style="font-size:10px;color:var(--text3)">team passed</div></div>';
+      html += '<svg width="16" height="16" fill="none" stroke="var(--text3)" stroke-width="2" viewBox="0 0 24 24" id="'+courseId+'-chevron"><polyline points="6,9 12,15 18,9"/></svg>';
+      html += '</div></div>';
+
+      // Expandable agent table
+      html += '<div id="'+courseId+'" style="display:none">';
+      if (_myTeam.length) {
+        html += '<table class="data-table" style="margin:0"><thead><tr><th>Agent</th><th>Status</th><th>Best score</th><th>Attempts</th><th>Completed</th><th></th></tr></thead><tbody>';
+        _myTeam.forEach(function(member) {
+          var email = member.agent_email.toLowerCase();
+          var r = resultMap[email];
+          var name = member.agent_name || member.agent_email.split('@')[0];
+          var initials = name.split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
+          var subject = encodeURIComponent('Training reminder: '+c.title);
+          var body = encodeURIComponent('Dear ' + name + ', Training reminder: ' + c.title + ' - due ' + (due?fmtD(due):'soon') + '. Pass mark: ' + c.pass_mark + '%. Please log into FOCUS and complete. Kind regards, ' + managerName);
+          var mailto = 'mailto:'+member.agent_email+'?subject='+subject+'&body='+body;
+          html += '<tr>';
+          html += '<td><div style="display:flex;align-items:center;gap:8px"><div class="agent-avatar" style="width:24px;height:24px;font-size:9px;flex-shrink:0">'+initials+'</div><div style="font-size:12px;font-weight:500;color:var(--text)">'+name+'</div></div></td>';
+          if (r && r.passed) {
+            html += '<td><span class="badge badge-green">Passed</span></td>';
+            html += '<td style="font-weight:600;color:var(--green)">'+r.best_score+'%</td>';
+            html += '<td style="color:var(--text3)">'+r.attempts+'</td>';
+            html += '<td style="font-size:11px;color:var(--text3)">'+fmtD(r.last_attempt)+'</td>';
+            html += '<td></td>';
+          } else if (r && !r.passed) {
+            html += '<td><span class="badge badge-amber">Attempted</span></td>';
+            html += '<td style="font-weight:600;color:var(--red)">'+r.best_score+'%</td>';
+            html += '<td style="color:var(--text3)">'+r.attempts+'</td>';
+            html += '<td style="font-size:11px;color:var(--text3)">'+fmtD(r.last_attempt)+'</td>';
+            html += '<td><a href="'+mailto+'" class="btn btn-secondary btn-sm" style="text-decoration:none;font-size:10px">✉ Send reminder</a></td>';
+          } else {
+            html += '<td><span class="badge badge-red">'+(overdue?'Overdue':'Not started')+'</span></td>';
+            html += '<td style="color:var(--text3)">—</td>';
+            html += '<td style="color:var(--text3)">0</td>';
+            html += '<td style="color:var(--text3)">—</td>';
+            html += '<td><a href="'+mailto+'" class="btn btn-secondary btn-sm" style="text-decoration:none;font-size:10px">✉ Send reminder</a></td>';
+          }
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+      html += '</div></div>';
+    }
+    el.innerHTML = html || '<div class="empty-state">No courses found</div>';
+  } catch(e) { el.innerHTML='<div class="empty-state">Failed to load: '+e.message+'</div>'; console.error(e); }
+}
+
+// ===== CLIENTS =====
+async function loadMgrClients() {
+  var el = document.getElementById('mgr-clients-list');
+  el.innerHTML='<div class="empty-state">Loading...</div>';
+  try {
+    var d = await fetch(API+'/api/admin/dashboard/v2').then(function(r){return r.json();});
+    var clients = d.byClient || [];
+    if(!clients.length) { el.innerHTML='<div class="empty-state">No clients found</div>'; return; }
+    var html='<table class="data-table"><thead><tr><th>Client</th><th>Accounts</th><th>Active plans</th><th>Broken plans</th><th>Payments this month</th><th>Collected</th></tr></thead><tbody>';
+    clients.forEach(function(c){
+      html+='<tr><td style="font-weight:500">'+c.client_name+'</td>';
+      html+='<td>'+c.total_accounts+'</td>';
+      html+='<td style="color:var(--green)">'+c.active_plans+'</td>';
+      html+='<td style="color:'+(c.broken_plans>0?'var(--red)':'var(--text3)')+'">'+c.broken_plans+'</td>';
+      html+='<td>'+c.payment_count_month+'</td>';
+      html+='<td style="font-weight:500">'+fmtCcy(c.payments_month)+'</td></tr>';
+    });
+    html+='</tbody></table>';
+    el.innerHTML=html;
+  } catch(e) { el.innerHTML='<div class="empty-state">Failed to load clients: '+e.message+'</div>'; }
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('login-screen').style.display='flex';
+  initAuth();
+});
+
+// ===== MY TEAM =====
+var _myTeam = [];
+
+async function loadMyTeam() {
+  var el = document.getElementById('team-list');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var d = await fetch(API + '/api/teams/' + encodeURIComponent(managerEmail)).then(function(r){ return r.json(); });
+    _myTeam = d.team || [];
+    if (!_myTeam.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:40px"><div style="font-size:32px;margin-bottom:12px">👥</div><div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px">No team members yet</div><div style="font-size:12px;color:var(--text3);margin-bottom:16px">Add agents to your team to monitor their policy compliance, training and QA scores</div><button class="btn btn-purple" onclick="openAddTeamMemberModal()">+ Add your first team member</button></div>';
+      return;
+    }
+    var html = '<div style="display:flex;flex-direction:column;gap:8px">';
+    _myTeam.forEach(function(member) {
+      var initials = member.agent_name ? member.agent_name.split(' ').map(function(n){ return n[0]; }).join('').substring(0,2) : '??';
+      html += '<div class="agent-card" style="cursor:default">';
+      html += '<div class="agent-avatar">' + initials + '</div>';
+      html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + member.agent_name + '</div>';
+      html += '<div style="font-size:11px;color:var(--text3)">' + member.agent_email + '</div></div>';
+      html += '<div style="display:flex;gap:8px">';
+      html += '<button class="btn btn-secondary btn-sm" onclick="viewAgentDetail(\'' + member.agent_email.replace(/'/g,"\\'") + '\',\'' + member.agent_name.replace(/'/g,"\\'") + '\')">View detail</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="removeTeamMember(\'' + member.agent_email.replace(/'/g,"\\'") + '\',\'' + member.agent_name.replace(/'/g,"\\'") + '\')">Remove</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+    // Update dashboard team filter
+    updateTeamFilter();
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state">Failed to load team</div>';
+    console.error(e);
+  }
+}
+
+function updateTeamFilter() {
+  var sel = document.getElementById('dash-team-filter');
+  if (!sel) return;
+  sel.innerHTML = '<option value="all">All agents</option>';
+  _myTeam.forEach(function(m) {
+    sel.innerHTML += '<option value="' + m.agent_email + '">' + m.agent_name + '</option>';
+  });
+}
+
+function openAddTeamMemberModal() {
+  var existing = document.getElementById('add-team-modal');
+  if (existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'add-team-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML =
+    '<div style="background:var(--bg);border-radius:12px;width:500px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,0.3)">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">' +
+      '<div style="font-size:14px;font-weight:600;color:var(--text)">Add team member</div>' +
+      '<button class="btn btn-secondary btn-sm" onclick="document.getElementById(\'add-team-modal\').remove()">Cancel</button>' +
+    '</div>' +
+    '<div style="padding:20px">' +
+      '<div class="form-group"><label class="form-label">Search by name or email</label>' +
+        '<input class="form-input" id="team-search-input" placeholder="e.g. Sarah Jones or sjones@thezincgroup.com" oninput="searchAzureUsers(this.value)"/>' +
+      '</div>' +
+      '<div id="team-search-results" style="margin-bottom:12px"></div>' +
+      '<div style="border-top:1px solid var(--border);padding-top:14px">' +
+        '<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Or add manually</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+          '<div class="form-group" style="margin-bottom:0"><label class="form-label">Full name</label><input class="form-input" id="manual-agent-name" placeholder="e.g. Sarah Jones"/></div>' +
+          '<div class="form-group" style="margin-bottom:0"><label class="form-label">Email</label><input class="form-input" id="manual-agent-email" placeholder="e.g. sjones@thezincgroup.com"/></div>' +
+        '</div>' +
+        '<button class="btn btn-purple" style="margin-top:12px" onclick="addTeamMemberManual()">Add to team</button>' +
+      '</div>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+}
+
+var _searchTimeout = null;
+function searchAzureUsers(q) {
+  clearTimeout(_searchTimeout);
+  if (!q || q.length < 2) { document.getElementById('team-search-results').innerHTML = ''; return; }
+  _searchTimeout = setTimeout(async function() {
+    var el = document.getElementById('team-search-results');
+    if (!el) return;
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Searching...</div>';
+    try {
+      var d = await fetch(API + '/api/azure/users?q=' + encodeURIComponent(q)).then(function(r){ return r.json(); });
+      var users = d.users || [];
+      if (!users.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">No users found — use manual entry below</div>'; return; }
+      var html = '<div style="display:flex;flex-direction:column;gap:6px">';
+      users.forEach(function(u) {
+        var safeName = u.name.replace(/'/g,"\\'");
+        var safeEmail = u.email.replace(/'/g,"\\'");
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg3);border-radius:var(--radius-sm)">';
+        html += '<div><div style="font-size:12px;font-weight:500;color:var(--text)">' + u.name + '</div>';
+        html += '<div style="font-size:11px;color:var(--text3)">' + u.email + (u.title ? ' · ' + u.title : '') + '</div></div>';
+        html += '<button class="btn btn-purple btn-sm" onclick="addTeamMemberFromSearch(\'' + safeName + '\',\'' + safeEmail + '\')">Add</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    } catch(e) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text3)">Search unavailable — use manual entry</div>';
+    }
+  }, 400);
+}
+
+async function addTeamMemberFromSearch(name, email) {
+  await doAddTeamMember(name, email);
+}
+
+async function addTeamMemberManual() {
+  var name = document.getElementById('manual-agent-name') ? document.getElementById('manual-agent-name').value.trim() : '';
+  var email = document.getElementById('manual-agent-email') ? document.getElementById('manual-agent-email').value.trim() : '';
+  if (!email) { notify('Email is required'); return; }
+  if (!name) name = email;
+  await doAddTeamMember(name, email);
+}
+
+async function doAddTeamMember(name, email) {
+  try {
+    var resp = await fetch(API + '/api/teams/' + encodeURIComponent(managerEmail) + '/add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent_name: name, agent_email: email, manager_name: managerName })
+    });
+    var data = await resp.json();
+    if (!data.success) throw new Error(data.error);
+    notify(name + ' added to your team');
+    var modal = document.getElementById('add-team-modal');
+    if (modal) modal.remove();
+    loadMyTeam();
+  } catch(e) { notify('Failed to add team member: ' + e.message); }
+}
+
+async function removeTeamMember(email, name) {
+  if (!confirm('Remove ' + name + ' from your team?')) return;
+  try {
+    await fetch(API + '/api/teams/' + encodeURIComponent(managerEmail) + '/' + encodeURIComponent(email), { method: 'DELETE' });
+    notify(name + ' removed from team');
+    loadMyTeam();
+  } catch(e) { notify('Failed to remove team member'); }
+}
+
+async function viewAgentDetail(email, name) {
+  // Build a modal showing agent's policy, training and QA summary
+  var existing = document.getElementById('agent-detail-modal');
+  if (existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'agent-detail-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:center;justify-content:center';
+  var initials = name.split(' ').map(function(n){ return n[0]; }).join('').substring(0,2);
+  modal.innerHTML =
+    '<div style="background:var(--bg);border-radius:12px;width:640px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.3)">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0">' +
+      '<div class="agent-avatar">' + initials + '</div>' +
+      '<div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--text)">' + name + '</div><div style="font-size:11px;color:var(--text3)">' + email + '</div></div>' +
+      '<button class="btn btn-secondary btn-sm" onclick="document.getElementById(\'agent-detail-modal\').remove()">Close</button>' +
+    '</div>' +
+    '<div style="overflow-y:auto;padding:16px;flex:1" id="agent-detail-body"><div class="empty-state">Loading...</div></div>' +
+    '</div>';
+  document.body.appendChild(modal);
+
+  // Load data
+  try {
+    var policyData = await fetch(API + '/api/policies/agent/' + encodeURIComponent(email)).then(function(r){ return r.json(); });
+    var trainingData = await fetch(API + '/api/training/courses/agent/' + encodeURIComponent(email)).then(function(r){ return r.json(); });
+    var qaData = await fetch(API + '/api/qa/agent/' + encodeURIComponent(email)).then(function(r){ return r.json(); });
+
+    var policies = policyData.policies || [];
+    var courses = trainingData.courses || [];
+    var qa = qaData.summary || {};
+    var qaAudits = qaData.audits || [];
+
+    var unreadPolicies = policies.filter(function(p){ return !p.acknowledged; }).length;
+    var passedCourses = courses.filter(function(c){ return c.passed; }).length;
+    var avgQA = qa.avg_score ? Math.round(qa.avg_score) : null;
+
+    var html = '';
+
+    // Summary tiles
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">';
+    html += '<div class="stat-card"><div class="stat-label">Policies unread</div><div class="stat-value" style="color:' + (unreadPolicies===0?'var(--green)':'var(--red)') + '">' + unreadPolicies + '</div><div class="stat-sub">of ' + policies.length + ' total</div></div>';
+    html += '<div class="stat-card"><div class="stat-label">Training passed</div><div class="stat-value" style="color:' + (passedCourses===courses.length&&courses.length>0?'var(--green)':'var(--amber)') + '">' + passedCourses + '/' + courses.length + '</div><div class="stat-sub">courses complete</div></div>';
+    html += '<div class="stat-card"><div class="stat-label">Avg QA score</div><div class="stat-value" style="color:' + (avgQA===null?'var(--text3)':avgQA>=80?'var(--green)':avgQA>=60?'var(--amber)':'var(--red)') + '">' + (avgQA!==null?avgQA+'%':'—') + '</div><div class="stat-sub">' + (qa.total_audits||0) + ' audit' + ((qa.total_audits||0)===1?'':'s') + '</div></div>';
+    html += '</div>';
+
+    // Policies
+    html += '<div style="margin-bottom:14px"><div class="section-label" style="margin-bottom:8px">Policies</div>';
+    if (!policies.length) { html += '<div style="font-size:12px;color:var(--text3)">No active policies</div>'; }
+    else {
+      policies.forEach(function(p) {
+        var due = p.due_date ? new Date(p.due_date) : null;
+        var overdue = due && due < new Date() && !p.acknowledged;
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">';
+        html += '<div style="font-size:12px;color:var(--text)">' + p.title + '</div>';
+        html += (p.acknowledged ? '<span class="badge badge-green">Read</span>' : overdue ? '<span class="badge badge-red">Overdue</span>' : '<span class="badge badge-amber">Unread</span>');
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+
+    // Training
+    html += '<div style="margin-bottom:14px"><div class="section-label" style="margin-bottom:8px">Training</div>';
+    if (!courses.length) { html += '<div style="font-size:12px;color:var(--text3)">No active courses</div>'; }
+    else {
+      courses.forEach(function(c) {
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">';
+        html += '<div style="font-size:12px;color:var(--text)">' + c.title + '</div>';
+        html += (c.passed ? '<span class="badge badge-green">Passed ' + c.best_score + '%</span>' : '<span class="badge badge-red">Incomplete</span>');
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+
+    // QA
+    if (qaAudits.length) {
+      html += '<div><div class="section-label" style="margin-bottom:8px">Recent QA audits</div>';
+      html += '<table class="data-table"><thead><tr><th>Date</th><th>Score</th><th>Remediation</th><th>Auditor</th></tr></thead><tbody>';
+      qaAudits.forEach(function(a) {
+        var col = a.score>=80?'var(--green)':a.score>=60?'var(--amber)':'var(--red)';
+        html += '<tr><td>' + fmtD(a.call_date||a.created_at) + '</td>';
+        html += '<td style="font-weight:700;color:' + col + '">' + a.score + '%</td>';
+        html += '<td>' + (a.remediation_required?'<span class="badge badge-red">Required</span>':'<span class="badge badge-green">None</span>') + '</td>';
+        html += '<td style="color:var(--text3)">' + (a.auditor_name||'—') + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    document.getElementById('agent-detail-body').innerHTML = html;
+  } catch(e) {
+    document.getElementById('agent-detail-body').innerHTML = '<div class="empty-state">Failed to load agent data</div>';
+    console.error(e);
+  }
+}
+
+</script>
