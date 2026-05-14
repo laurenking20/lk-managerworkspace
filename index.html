@@ -228,6 +228,10 @@ select.form-input{cursor:pointer}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
       <span class="rail-tooltip">Comms</span>
     </button>
+    <button class="rail-btn" id="rb-fields" onclick="setSection('fields')" title="">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+      <span class="rail-tooltip">Fields</span>
+    </button>
 
   <!-- Main -->
   <div class="main">
@@ -526,6 +530,93 @@ select.form-input{cursor:pointer}
         </div>
       </div>
 
+      <!-- CUSTOM FIELDS -->
+      <div class="section-panel" id="section-fields">
+        <div class="page-hdr">
+          <div><div class="page-title">Custom Fields</div><div class="page-sub">Configure Sundry 1, Sundry 2 and Additional Info fields per client</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openFieldAdd()">+ Add field</button>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;padding:14px 16px">
+          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-group" style="margin:0;flex:1;min-width:160px">
+              <label class="form-label">Client</label>
+              <select class="form-select" id="fields-mgr-client" onchange="loadFieldsContracts()"><option value="">Select client...</option></select>
+            </div>
+            <div class="form-group" style="margin:0;flex:1;min-width:160px">
+              <label class="form-label">Contract</label>
+              <select class="form-select" id="fields-mgr-contract" onchange="loadFieldsList()"><option value="">All contracts</option></select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Tab</label>
+              <select class="form-select" id="fields-mgr-tab" onchange="loadFieldsList()">
+                <option value="">All tabs</option>
+                <option value="sundry1">Sundry 1</option>
+                <option value="sundry2">Sundry 2</option>
+                <option value="additional">Additional Info</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px;background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 16px">
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">LABEL</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">FIELD KEY</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">TAB</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">TYPE</div>
+            <div></div>
+          </div>
+          <div id="fields-mgr-list"><div class="empty-state" style="padding:24px">Select a client to view fields</div></div>
+        </div>
+      </div>
+
+      <!-- Add/Edit field modal -->
+      <div id="field-add-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9000;align-items:center;justify-content:center">
+        <div style="background:var(--bg);border-radius:12px;width:460px;max-width:95vw;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.25)">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+            <div id="field-add-modal-title" style="font-size:14px;font-weight:600;color:var(--text)">Add Field</div>
+            <button onclick="closeFieldAdd()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;line-height:1;padding:2px 6px">✕</button>
+          </div>
+          <div style="padding:16px 20px">
+            <input type="hidden" id="field-edit-id"/>
+            <div class="form-group"><label class="form-label">Field label <span style="color:var(--red)">*</span></label><input type="text" class="form-input" id="field-add-label" placeholder="e.g. MPAN Number"/></div>
+            <div class="form-group"><label class="form-label">Field key <span style="color:var(--red)">*</span></label><input type="text" class="form-input" id="field-add-key" placeholder="e.g. mpan_number (used in CSV import)"/></div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Tab <span style="color:var(--red)">*</span></label>
+                <select class="form-select" id="field-add-tab">
+                  <option value="sundry1">Sundry 1</option>
+                  <option value="sundry2">Sundry 2</option>
+                  <option value="additional">Additional Info</option>
+                </select>
+              </div>
+              <div class="form-group"><label class="form-label">Type</label>
+                <select class="form-select" id="field-add-type">
+                  <option value="text">Text</option>
+                  <option value="number">Number</option>
+                  <option value="currency">Currency</option>
+                  <option value="date">Date</option>
+                  <option value="textarea">Text area</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Client <span style="color:var(--red)">*</span></label>
+                <select class="form-select" id="field-add-client"><option value="">Select...</option></select>
+              </div>
+              <div class="form-group"><label class="form-label">Contract (optional)</label>
+                <select class="form-select" id="field-add-contract"><option value="">All contracts</option></select>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Display order</label><input type="number" class="form-input" id="field-add-order" value="0" min="0"/></div>
+          </div>
+          <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+            <button onclick="closeFieldAdd()" style="padding:7px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;color:var(--text)">Cancel</button>
+            <button onclick="saveFieldDef()" style="padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">Save field</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -675,7 +766,7 @@ function signOut() {
 }
 
 // ===== NAVIGATION =====
-var sections = ['dashboard','accounts','agents','qa-audit','qa-results','policies','training','clients','team','comms'];
+var sections = ['dashboard','accounts','agents','qa-audit','qa-results','policies','training','clients','team','comms','fields'];
 
 function setSection(name) {
   sections.forEach(function(s) {
@@ -693,6 +784,7 @@ function setSection(name) {
   if(name==='clients') loadMgrClients();
   if(name==='team') loadMyTeam();
   if(name==='comms') loadCommsSection();
+  if(name==='fields') loadFieldsSection();
 }
 
 // ===== UTILS =====
@@ -2932,5 +3024,140 @@ async function toggleCommsActive(id, active){
 }
 
 // ── END COMMS MANAGEMENT ──────────────────────────────────────
+
+// ============================================================
+// CUSTOM FIELDS MANAGEMENT
+// ============================================================
+
+async function loadFieldsSection(){
+  await loadFieldsClientDropdown();
+  document.getElementById('fields-mgr-list').innerHTML='<div class="empty-state" style="padding:24px">Select a client to view fields</div>';
+}
+
+async function loadFieldsClientDropdown(){
+  try{
+    const d=await fetch(API+'/api/clients').then(r=>r.json());
+    const clients=d.clients||d||[];
+    const opts=clients.map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');
+    const sel=document.getElementById('fields-mgr-client');
+    const selAdd=document.getElementById('field-add-client');
+    if(sel) sel.innerHTML='<option value="">Select client...</option>'+opts;
+    if(selAdd) selAdd.innerHTML='<option value="">Select...</option>'+opts;
+  }catch(e){}
+}
+
+async function loadFieldsContracts(){
+  const clientId=document.getElementById('fields-mgr-client')?.value;
+  const sel=document.getElementById('fields-mgr-contract');
+  const selAdd=document.getElementById('field-add-contract');
+  if(!clientId){ if(sel) sel.innerHTML='<option value="">All contracts</option>'; return; }
+  try{
+    const d=await fetch(API+'/api/clients/'+clientId+'/contracts').then(r=>r.json());
+    const opts='<option value="">All contracts</option>'+(d.contracts||[]).map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');
+    if(sel) sel.innerHTML=opts;
+    if(selAdd) selAdd.innerHTML=opts;
+  }catch(e){}
+  loadFieldsList();
+}
+
+async function loadFieldsList(){
+  const clientId=document.getElementById('fields-mgr-client')?.value;
+  const contractId=document.getElementById('fields-mgr-contract')?.value;
+  const tab=document.getElementById('fields-mgr-tab')?.value;
+  const el=document.getElementById('fields-mgr-list');
+  if(!clientId){el.innerHTML='<div class="empty-state" style="padding:24px">Select a client to view fields</div>';return;}
+  el.innerHTML='<div class="empty-state" style="padding:24px">Loading...</div>';
+  try{
+    let url=API+'/api/fields/definitions?client_id='+clientId;
+    if(contractId) url+='&contract_id='+contractId;
+    if(tab) url+='&tab='+tab;
+    const d=await fetch(url).then(r=>r.json());
+    const defs=d.definitions||[];
+    if(!defs.length){el.innerHTML='<div class="empty-state" style="padding:24px">No fields configured yet</div>';return;}
+    const tabLabels={sundry1:'Sundry 1',sundry2:'Sundry 2',additional:'Additional Info'};
+    el.innerHTML=defs.map(f=>`
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center">
+        <div style="font-size:13px;font-weight:500;color:var(--text)">${f.field_label}</div>
+        <div style="font-size:11px;color:var(--text2);font-family:monospace">${f.field_key}</div>
+        <div style="font-size:12px;color:var(--text2)">${tabLabels[f.tab]||f.tab}</div>
+        <div style="font-size:12px;color:var(--text2)">${f.field_type}</div>
+        <div style="display:flex;gap:4px">
+          <button onclick="editFieldDef('${f.id}')" style="padding:3px 8px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--bg2);color:var(--text);cursor:pointer">Edit</button>
+          <button onclick="deleteFieldDef('${f.id}')" style="padding:3px 8px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--bg2);color:var(--red);cursor:pointer">Del</button>
+        </div>
+      </div>`).join('');
+  }catch(e){el.innerHTML='<div class="empty-state" style="padding:24px">Failed to load</div>';}
+}
+
+function openFieldAdd(){
+  document.getElementById('field-edit-id').value='';
+  document.getElementById('field-add-modal-title').textContent='Add Field';
+  document.getElementById('field-add-label').value='';
+  document.getElementById('field-add-key').value='';
+  document.getElementById('field-add-tab').value='sundry1';
+  document.getElementById('field-add-type').value='text';
+  document.getElementById('field-add-order').value='0';
+  loadFieldsClientDropdown();
+  document.getElementById('field-add-modal').style.display='flex';
+}
+
+function closeFieldAdd(){
+  document.getElementById('field-add-modal').style.display='none';
+}
+
+async function editFieldDef(id){
+  try{
+    const d=await fetch(API+'/api/fields/definitions?client_id=all').then(r=>r.json());
+    const f=(d.definitions||[]).find(x=>x.id===id);
+    if(!f) return;
+    document.getElementById('field-edit-id').value=f.id;
+    document.getElementById('field-add-modal-title').textContent='Edit Field';
+    document.getElementById('field-add-label').value=f.field_label;
+    document.getElementById('field-add-key').value=f.field_key;
+    document.getElementById('field-add-tab').value=f.tab;
+    document.getElementById('field-add-type').value=f.field_type;
+    document.getElementById('field-add-order').value=f.display_order||0;
+    await loadFieldsClientDropdown();
+    document.getElementById('field-add-client').value=f.client_id||'';
+    document.getElementById('field-add-contract').value=f.contract_id||'';
+    document.getElementById('field-add-modal').style.display='flex';
+  }catch(e){notify('Failed to load field');}
+}
+
+async function saveFieldDef(){
+  const id=document.getElementById('field-edit-id').value;
+  const label=document.getElementById('field-add-label').value.trim();
+  const key=document.getElementById('field-add-key').value.trim().replace(/\s+/g,'_').toLowerCase();
+  const tab=document.getElementById('field-add-tab').value;
+  const type=document.getElementById('field-add-type').value;
+  const clientId=document.getElementById('field-add-client').value;
+  const contractId=document.getElementById('field-add-contract').value;
+  const order=parseInt(document.getElementById('field-add-order').value)||0;
+  if(!label){notify('Please enter a label');return;}
+  if(!key){notify('Please enter a field key');return;}
+  if(!clientId){notify('Please select a client');return;}
+  const payload={field_label:label,field_key:key,tab,field_type:type,client_id:clientId,contract_id:contractId||null,display_order:order};
+  try{
+    let d;
+    if(id){
+      d=await fetch(API+'/api/fields/definitions/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());
+    } else {
+      d=await fetch(API+'/api/fields/definitions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());
+    }
+    if(d.success){notify(id?'Field updated':'Field added');closeFieldAdd();loadFieldsList();}
+    else notify(d.error||'Failed');
+  }catch(e){notify('Error saving field');}
+}
+
+async function deleteFieldDef(id){
+  if(!confirm('Remove this field? Existing values will be kept.')) return;
+  try{
+    const d=await fetch(API+'/api/fields/definitions/'+id,{method:'DELETE'}).then(r=>r.json());
+    if(d.success){notify('Field removed');loadFieldsList();}
+    else notify(d.error||'Failed');
+  }catch(e){notify('Error');}
+}
+
+// ── END CUSTOM FIELDS MANAGEMENT ─────────────────────────────
 
 </script>
