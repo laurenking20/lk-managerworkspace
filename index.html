@@ -223,7 +223,11 @@ select.form-input{cursor:pointer}
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="21" x2="23" y2="19"/><line x1="19" y1="21" x2="19" y2="19"/><path d="M23 13a4 4 0 0 0-4-4"/></svg>
       <span class="rail-tooltip">My team</span>
     </button>
-  </div>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" id="rb-comms" onclick="setSection('comms')" title="">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      <span class="rail-tooltip">Comms</span>
+    </button>
 
   <!-- Main -->
   <div class="main">
@@ -426,6 +430,102 @@ select.form-input{cursor:pointer}
         <div id="mgr-clients-list"><div class="empty-state">Loading...</div></div>
       </div>
 
+      <!-- COMMS TEMPLATES -->
+      <div class="section-panel" id="section-comms">
+        <div class="page-hdr">
+          <div><div class="page-title">Communications Templates</div><div class="page-sub">Manage template lists per client and contract</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openCommsAddTemplate()">+ Add template</button>
+        </div>
+
+        <!-- Client / Contract selector -->
+        <div class="card" style="margin-bottom:16px;padding:14px 16px">
+          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-group" style="margin:0;flex:1;min-width:160px">
+              <label class="form-label">Client</label>
+              <select class="form-select" id="comms-mgr-client" onchange="loadCommsContracts()">
+                <option value="">Select client...</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;flex:1;min-width:160px">
+              <label class="form-label">Contract</label>
+              <select class="form-select" id="comms-mgr-contract" onchange="loadCommsTemplates()">
+                <option value="">All contracts</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Channel</label>
+              <select class="form-select" id="comms-mgr-channel" onchange="loadCommsTemplates()">
+                <option value="">All</option>
+                <option value="letter">Letters</option>
+                <option value="email">Emails</option>
+                <option value="sms">SMS</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Template list -->
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px;gap:0;background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 16px">
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">TEMPLATE NAME</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">CHANNEL</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">TYPE</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">STATUS</div>
+            <div></div>
+          </div>
+          <div id="comms-mgr-list"><div class="empty-state" style="padding:24px">Select a client to view templates</div></div>
+        </div>
+      </div>
+
+      <!-- Add/Edit template modal -->
+      <div id="comms-add-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9000;align-items:center;justify-content:center">
+        <div style="background:var(--bg);border-radius:12px;width:480px;max-width:95vw;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.25)">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+            <div id="comms-add-modal-title" style="font-size:14px;font-weight:600;color:var(--text)">Add Template</div>
+            <button onclick="closeCommsAddTemplate()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;line-height:1;padding:2px 6px">✕</button>
+          </div>
+          <div style="padding:16px 20px">
+            <input type="hidden" id="comms-edit-id"/>
+            <div class="form-group"><label class="form-label">Template name <span style="color:var(--red)">*</span></label><input type="text" class="form-input" id="comms-add-name" placeholder="e.g. Balance Letter"/></div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Channel <span style="color:var(--red)">*</span></label>
+                <select class="form-select" id="comms-add-channel">
+                  <option value="letter">Letter</option>
+                  <option value="email">Email</option>
+                  <option value="sms">SMS</option>
+                </select>
+              </div>
+              <div class="form-group"><label class="form-label">Type <span style="color:var(--red)">*</span></label>
+                <select class="form-select" id="comms-add-type">
+                  <option value="auto">Automatic</option>
+                  <option value="manual">Manual</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Client <span style="color:var(--red)">*</span></label>
+                <select class="form-select" id="comms-add-client"><option value="">Select...</option></select>
+              </div>
+              <div class="form-group"><label class="form-label">Contract (optional)</label>
+                <select class="form-select" id="comms-add-contract"><option value="">All contracts</option></select>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Requires extra input?</label>
+              <select class="form-select" id="comms-add-modal-type">
+                <option value="none">No — send directly</option>
+                <option value="cpa">Yes — CPA (amount + date)</option>
+                <option value="custom">Yes — custom fields</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Notes</label><input type="text" class="form-input" id="comms-add-notes" placeholder="Optional notes about this template"/></div>
+          </div>
+          <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+            <button onclick="closeCommsAddTemplate()" style="padding:7px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;color:var(--text)">Cancel</button>
+            <button onclick="saveCommsTemplate()" style="padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer">Save template</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -575,7 +675,7 @@ function signOut() {
 }
 
 // ===== NAVIGATION =====
-var sections = ['dashboard','accounts','agents','qa-audit','qa-results','policies','training','clients','team'];
+var sections = ['dashboard','accounts','agents','qa-audit','qa-results','policies','training','clients','team','comms'];
 
 function setSection(name) {
   sections.forEach(function(s) {
@@ -592,6 +692,7 @@ function setSection(name) {
   if(name==='training') loadMgrTraining();
   if(name==='clients') loadMgrClients();
   if(name==='team') loadMyTeam();
+  if(name==='comms') loadCommsSection();
 }
 
 // ===== UTILS =====
@@ -2692,5 +2793,144 @@ async function viewAgentDetail(email, name) {
     console.error(e);
   }
 }
+
+// ============================================================
+// COMMS TEMPLATE MANAGEMENT
+// ============================================================
+
+async function loadCommsSection(){
+  await loadCommsClientDropdown();
+  document.getElementById('comms-mgr-list').innerHTML='<div class="empty-state" style="padding:24px">Select a client to view templates</div>';
+}
+
+async function loadCommsClientDropdown(){
+  try{
+    const d=await fetch(API+'/api/clients').then(r=>r.json());
+    const clients=d.clients||d||[];
+    const sel=document.getElementById('comms-mgr-client');
+    const selAdd=document.getElementById('comms-add-client');
+    if(sel) sel.innerHTML='<option value="">Select client...</option>'+clients.map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');
+    if(selAdd) selAdd.innerHTML='<option value="">Select...</option>'+clients.map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');
+  }catch(e){}
+}
+
+async function loadCommsContracts(){
+  const clientId=document.getElementById('comms-mgr-client')?.value;
+  const sel=document.getElementById('comms-mgr-contract');
+  const selAdd=document.getElementById('comms-add-contract');
+  if(!clientId){
+    if(sel) sel.innerHTML='<option value="">All contracts</option>';
+    return;
+  }
+  try{
+    const d=await fetch(API+'/api/clients/'+clientId+'/contracts').then(r=>r.json());
+    const contracts=d.contracts||[];
+    const opts='<option value="">All contracts</option>'+contracts.map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');
+    if(sel) sel.innerHTML=opts;
+    if(selAdd) selAdd.innerHTML='<option value="">All contracts</option>'+contracts.map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');
+  }catch(e){}
+  loadCommsTemplates();
+}
+
+async function loadCommsTemplates(){
+  const clientId=document.getElementById('comms-mgr-client')?.value;
+  const contractId=document.getElementById('comms-mgr-contract')?.value;
+  const channel=document.getElementById('comms-mgr-channel')?.value;
+  const el=document.getElementById('comms-mgr-list');
+  if(!clientId){el.innerHTML='<div class="empty-state" style="padding:24px">Select a client to view templates</div>';return;}
+  el.innerHTML='<div class="empty-state" style="padding:24px">Loading...</div>';
+  try{
+    let url=API+'/api/comms/templates?client_id='+clientId;
+    if(contractId) url+='&contract_id='+contractId;
+    if(channel) url+='&channel='+channel;
+    const d=await fetch(url).then(r=>r.json());
+    const templates=d.templates||[];
+    if(!templates.length){el.innerHTML='<div class="empty-state" style="padding:24px">No templates configured for this client yet</div>';return;}
+    const channelIcon={letter:'✉️',email:'📧',sms:'💬'};
+    el.innerHTML=templates.map(t=>`
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px;gap:0;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center">
+        <div style="font-size:13px;font-weight:500;color:var(--text)">${t.template_name}</div>
+        <div style="font-size:12px;color:var(--text2)">${channelIcon[t.channel]||''} ${t.channel||'—'}</div>
+        <div style="font-size:12px;color:var(--text2)">${t.template_type==='auto'?'Automatic':'Manual'}</div>
+        <div><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:${t.active?'var(--green-bg)':'var(--bg3)'};color:${t.active?'var(--green)':'var(--text2)'}">${t.active?'Active':'Inactive'}</span></div>
+        <div style="display:flex;gap:6px">
+          <button onclick="editCommsTemplate('${t.id}')" style="padding:3px 8px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--bg2);color:var(--text);cursor:pointer">Edit</button>
+          <button onclick="toggleCommsActive('${t.id}',${!t.active})" style="padding:3px 8px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--bg2);color:var(--text);cursor:pointer">${t.active?'Off':'On'}</button>
+        </div>
+      </div>`).join('');
+  }catch(e){el.innerHTML='<div class="empty-state" style="padding:24px">Failed to load templates</div>';}
+}
+
+function openCommsAddTemplate(){
+  document.getElementById('comms-edit-id').value='';
+  document.getElementById('comms-add-modal-title').textContent='Add Template';
+  document.getElementById('comms-add-name').value='';
+  document.getElementById('comms-add-channel').value='letter';
+  document.getElementById('comms-add-type').value='manual';
+  document.getElementById('comms-add-modal-type').value='none';
+  document.getElementById('comms-add-notes').value='';
+  loadCommsClientDropdown();
+  document.getElementById('comms-add-modal').style.display='flex';
+}
+
+function closeCommsAddTemplate(){
+  document.getElementById('comms-add-modal').style.display='none';
+}
+
+async function editCommsTemplate(id){
+  try{
+    const d=await fetch(API+'/api/comms/templates/'+id).then(r=>r.json());
+    const t=d.template;
+    if(!t) return;
+    document.getElementById('comms-edit-id').value=t.id;
+    document.getElementById('comms-add-modal-title').textContent='Edit Template';
+    document.getElementById('comms-add-name').value=t.template_name;
+    document.getElementById('comms-add-channel').value=t.channel;
+    document.getElementById('comms-add-type').value=t.template_type;
+    document.getElementById('comms-add-modal-type').value=t.modal_type||'none';
+    document.getElementById('comms-add-notes').value=t.notes||'';
+    await loadCommsClientDropdown();
+    document.getElementById('comms-add-client').value=t.client_id||'';
+    document.getElementById('comms-add-contract').value=t.contract_id||'';
+    document.getElementById('comms-add-modal').style.display='flex';
+  }catch(e){notify('Failed to load template');}
+}
+
+async function saveCommsTemplate(){
+  const id=document.getElementById('comms-edit-id').value;
+  const name=document.getElementById('comms-add-name').value.trim();
+  const channel=document.getElementById('comms-add-channel').value;
+  const type=document.getElementById('comms-add-type').value;
+  const clientId=document.getElementById('comms-add-client').value;
+  const contractId=document.getElementById('comms-add-contract').value;
+  const modalType=document.getElementById('comms-add-modal-type').value;
+  const notes=document.getElementById('comms-add-notes').value;
+  if(!name){notify('Please enter a template name');return;}
+  if(!clientId){notify('Please select a client');return;}
+  const payload={template_name:name,channel,template_type:type,client_id:clientId,contract_id:contractId||null,modal_type:modalType,notes,active:true};
+  try{
+    let d;
+    if(id){
+      d=await fetch(API+'/api/comms/templates/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());
+    } else {
+      d=await fetch(API+'/api/comms/templates',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());
+    }
+    if(d.success){
+      notify(id?'Template updated':'Template added');
+      closeCommsAddTemplate();
+      loadCommsTemplates();
+    } else notify(d.error||'Failed');
+  }catch(e){notify('Error saving template');}
+}
+
+async function toggleCommsActive(id, active){
+  try{
+    const d=await fetch(API+'/api/comms/templates/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({active})}).then(r=>r.json());
+    if(d.success) loadCommsTemplates();
+    else notify(d.error||'Failed');
+  }catch(e){notify('Error updating template');}
+}
+
+// ── END COMMS MANAGEMENT ──────────────────────────────────────
 
 </script>
