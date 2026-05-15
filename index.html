@@ -27,7 +27,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* Layout */
 .app{display:flex;height:100vh;padding-top:56px}
-  
 
 /* Rail */
 .rail{width:52px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0;position:fixed;top:56px;bottom:0;left:0;z-index:100;overflow-y:auto}
@@ -232,6 +231,10 @@ select.form-input{cursor:pointer}
     <button class="rail-btn" id="rb-fields" onclick="setSection('fields')" title="">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
       <span class="rail-tooltip">Fields</span>
+    </button>
+    <button class="rail-btn" id="rb-worklist" onclick="setSection('worklist')" title="">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span class="rail-tooltip">Worklist</span>
     </button>
 
   <!-- Main -->
@@ -618,6 +621,64 @@ select.form-input{cursor:pointer}
         </div>
       </div>
 
+      <!-- WORKLIST -->
+      <div class="section-panel" id="section-worklist">
+        <div class="page-hdr">
+          <div><div class="page-title">Worklist</div><div class="page-sub">Filter accounts by agent, client, status and diary date</div></div>
+          <button class="btn btn-secondary btn-sm" onclick="loadWorklist()">Run</button>
+        </div>
+
+        <!-- Filters -->
+        <div class="card" style="margin-bottom:16px;padding:14px 16px">
+          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-group" style="margin:0;flex:1;min-width:150px">
+              <label class="form-label">Agent</label>
+              <select class="form-select" id="wl-agent">
+                <option value="">Any agent</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;flex:1;min-width:150px">
+              <label class="form-label">Client</label>
+              <select class="form-select" id="wl-client">
+                <option value="">Any client</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;flex:1;min-width:150px">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="wl-status">
+                <option value="">Any status</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;min-width:130px">
+              <label class="form-label">Diary from</label>
+              <input type="date" class="form-input" id="wl-date-from"/>
+            </div>
+            <div class="form-group" style="margin:0;min-width:130px">
+              <label class="form-label">Diary to</label>
+              <input type="date" class="form-input" id="wl-date-to"/>
+            </div>
+            <button class="btn btn-primary" onclick="loadWorklist()">Filter</button>
+            <button class="btn btn-secondary" onclick="clearWorklistFilters()">Clear</button>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div id="wl-results-count" style="font-size:12px;color:var(--text2);margin-bottom:8px"></div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1.5fr 1fr 1fr 1fr;background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 16px">
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">ACCOUNT</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">CLIENT</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">STATUS</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">BALANCE</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">DIARY</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em">AGENT</div>
+          </div>
+          <div id="wl-results"><div class="empty-state" style="padding:24px">Set filters and click Run</div></div>
+        </div>
+        <!-- Pagination -->
+        <div id="wl-pagination" style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;color:var(--text2)"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -767,7 +828,7 @@ function signOut() {
 }
 
 // ===== NAVIGATION =====
-var sections = ['dashboard','accounts','agents','qa-audit','qa-results','policies','training','clients','team','comms','fields'];
+var sections = ['dashboard','accounts','agents','qa-audit','qa-results','policies','training','clients','team','comms','fields','worklist'];
 
 function setSection(name) {
   sections.forEach(function(s) {
@@ -786,6 +847,7 @@ function setSection(name) {
   if(name==='team') loadMyTeam();
   if(name==='comms') loadCommsSection();
   if(name==='fields') loadFieldsSection();
+  if(name==='worklist') loadWorklistSection();
 }
 
 // ===== UTILS =====
@@ -3160,5 +3222,110 @@ async function deleteFieldDef(id){
 }
 
 // ── END CUSTOM FIELDS MANAGEMENT ─────────────────────────────
+
+// ============================================================
+// WORKLIST
+// ============================================================
+
+var _wlPage=1;
+const WL_STATUSES=['Active','Active - Payment Plan','Broken Payment Plan','Promised payment','No Contact','Gone Away','Vulnerable','Level 2 Complaint','Breathing Space','Settled','Write Off','Deceased','Disputed','Legal','Tracing'];
+
+async function loadWorklistSection(){
+  // Populate agents from team
+  const agentSel=document.getElementById('wl-agent');
+  if(agentSel && agentSel.options.length<=1){
+    try{
+      const td=await fetch(API+'/api/teams/'+encodeURIComponent(managerEmail)).then(r=>r.json());
+      (td.team||[]).forEach(function(m){
+        const o=document.createElement('option');o.value=m.agent_email;o.textContent=m.agent_name||m.agent_email;agentSel.appendChild(o);
+      });
+    }catch(e){}
+  }
+  // Populate clients
+  const clientSel=document.getElementById('wl-client');
+  if(clientSel && clientSel.options.length<=1){
+    try{
+      const cd=await fetch(API+'/api/clients').then(r=>r.json());
+      (cd.clients||cd||[]).forEach(function(c){
+        const o=document.createElement('option');o.value=c.id;o.textContent=c.name;clientSel.appendChild(o);
+      });
+    }catch(e){}
+  }
+  // Populate statuses
+  const statusSel=document.getElementById('wl-status');
+  if(statusSel && statusSel.options.length<=1){
+    WL_STATUSES.forEach(function(s){
+      const o=document.createElement('option');o.value=s;o.textContent=s;statusSel.appendChild(o);
+    });
+  }
+  // Set default dates to today
+  const today=new Date().toISOString().split('T')[0];
+  const fromEl=document.getElementById('wl-date-from');
+  const toEl=document.getElementById('wl-date-to');
+  if(fromEl && !fromEl.value) fromEl.value=today;
+  if(toEl && !toEl.value) toEl.value=today;
+}
+
+function clearWorklistFilters(){
+  document.getElementById('wl-agent').value='';
+  document.getElementById('wl-client').value='';
+  document.getElementById('wl-status').value='';
+  document.getElementById('wl-date-from').value='';
+  document.getElementById('wl-date-to').value='';
+  document.getElementById('wl-results').innerHTML='<div class="empty-state" style="padding:24px">Set filters and click Run</div>';
+  document.getElementById('wl-results-count').textContent='';
+  document.getElementById('wl-pagination').innerHTML='';
+  _wlPage=1;
+}
+
+async function loadWorklist(page){
+  _wlPage=page||1;
+  const agent=document.getElementById('wl-agent')?.value;
+  const client=document.getElementById('wl-client')?.value;
+  const status=document.getElementById('wl-status')?.value;
+  const dateFrom=document.getElementById('wl-date-from')?.value;
+  const dateTo=document.getElementById('wl-date-to')?.value;
+  const resultsEl=document.getElementById('wl-results');
+  const countEl=document.getElementById('wl-results-count');
+  const pageEl=document.getElementById('wl-pagination');
+  resultsEl.innerHTML='<div class="empty-state" style="padding:24px">Loading...</div>';
+  let url=API+'/api/manager/worklist?page='+_wlPage+'&page_size=25';
+  if(agent) url+='&agent_email='+encodeURIComponent(agent);
+  if(client) url+='&client_id='+encodeURIComponent(client);
+  if(status) url+='&status='+encodeURIComponent(status);
+  if(dateFrom) url+='&date_from='+dateFrom;
+  if(dateTo) url+='&date_to='+dateTo;
+  try{
+    const d=await fetch(url).then(r=>r.json());
+    if(!d.success||!d.accounts||!d.accounts.length){
+      resultsEl.innerHTML='<div class="empty-state" style="padding:24px">No accounts found</div>';
+      countEl.textContent='';pageEl.innerHTML='';return;
+    }
+    const today=new Date().toISOString().split('T')[0];
+    countEl.textContent='Showing '+(((_wlPage-1)*25)+1)+'–'+(Math.min(_wlPage*25,d.total))+' of '+d.total+' accounts';
+    resultsEl.innerHTML=d.accounts.map(function(a){
+      const diaryDate=a.diary_date?a.diary_date.split('T')[0]:'';
+      const isOverdue=diaryDate&&diaryDate<today;
+      const isToday=diaryDate===today;
+      return '<div style="display:grid;grid-template-columns:2fr 1fr 1.5fr 1fr 1fr 1fr;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer" onclick="setSection(\'accounts\');setTimeout(function(){loadManagerAccount(\''+a.zinc_ref+'\');},100)" onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'\'">'+
+        '<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+a.first_name+' '+a.last_name+'</div><div style="font-size:11px;color:var(--text2)">'+a.zinc_ref+'</div></div>'+
+        '<div style="font-size:12px;color:var(--text2)">'+( a.client_name||'—')+'</div>'+
+        '<div><span style="font-size:11px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--text2)">'+( a.account_status||'—')+'</span></div>'+
+        '<div style="font-size:12px;font-weight:600;color:var(--text)">'+fmtC(a.balance)+'</div>'+
+        '<div style="font-size:11px;color:'+(isOverdue?'var(--red)':isToday?'var(--accent)':'var(--text2)')+'">'+( diaryDate?diaryDate:'—')+(isOverdue?' ⚠':'')+(isToday?' ·today':'')+'</div>'+
+        '<div style="font-size:11px;color:var(--text2)">'+( a.assigned_agent_email?a.assigned_agent_email.split('@')[0]:'—')+'</div>'+
+      '</div>';
+    }).join('');
+    // Pagination
+    const totalPages=Math.ceil(d.total/25);
+    if(totalPages>1){
+      pageEl.innerHTML='<button class="btn btn-secondary btn-sm" onclick="loadWorklist('+( _wlPage-1)+')" '+(  _wlPage<=1?'disabled':'')+'>← Prev</button>'+
+        '<span>Page '+_wlPage+' of '+totalPages+'</span>'+
+        '<button class="btn btn-secondary btn-sm" onclick="loadWorklist('+( _wlPage+1)+')" '+(  _wlPage>=totalPages?'disabled':'')+'>Next →</button>';
+    } else pageEl.innerHTML='';
+  }catch(e){resultsEl.innerHTML='<div class="empty-state" style="padding:24px">Failed to load</div>';}
+}
+
+// ── END WORKLIST ──────────────────────────────────────────────
 
 </script>
